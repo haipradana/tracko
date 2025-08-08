@@ -11,7 +11,7 @@ import { BarChart3, Loader2, CheckCircle, AlertCircle, Upload, Sparkles, Users }
 import axios from 'axios';
 
 // API Configuration
-const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || "http://70.153.8.238:8000";
+const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || "https://api.tracko.tech";
 
 // Define the structure for the journey analysis data from the backend
 interface JourneyOutcome {
