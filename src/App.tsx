@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react';
-import FileUpload from './components/FileUpload';
-import DurationSlider from './components/DurationSlider';
-import Heatmap from './components/Heatmap';
-import DwellTimeChart from './components/DwellTimeChart';
-import CustomerJourney from './components/CustomerJourney';
-import BehaviorArchetypes from './components/BehaviorArchetypes';
-import InsightRecommendations from './components/InsightRecommendations';
-import AnnotatedVideo from './components/AnnotatedVideo';
-import { BarChart3, Loader2, CheckCircle, AlertCircle, Upload, Sparkles, Users } from 'lucide-react';
-import axios from 'axios';
+import { useEffect, useState } from "react";
+import FileUpload from "./components/FileUpload";
+import DurationSlider from "./components/DurationSlider";
+import Heatmap from "./components/Heatmap";
+import DwellTimeChart from "./components/DwellTimeChart";
+import CustomerJourney from "./components/CustomerJourney";
+import BehaviorArchetypes from "./components/BehaviorArchetypes";
+import InsightRecommendations from "./components/InsightRecommendations";
+import AnnotatedVideo from "./components/AnnotatedVideo";
+import { AlertCircle, Sparkles, Users } from "lucide-react";
+import axios from "axios";
 
 // API Configuration
-const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || "https://api.tracko.tech";
+const FASTAPI_URL =
+  import.meta.env.VITE_FASTAPI_URL || "https://api.tracko.tech";
 
 // Define the structure for the journey analysis data from the backend
 interface JourneyOutcome {
@@ -69,180 +70,174 @@ interface AnalysisResult {
 }
 
 enum AnalysisStep {
-  UPLOAD = 'upload',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  ERROR = 'error'
+  UPLOAD = "upload",
+  PROCESSING = "processing",
+  COMPLETED = "completed",
+  ERROR = "error",
 }
 
 function App() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [originalVideoUrl, setOriginalVideoUrl] = useState<string | null>(null);
   const [maxDuration, setMaxDuration] = useState(30);
-  const [currentStep, setCurrentStep] = useState<AnalysisStep>(AnalysisStep.UPLOAD);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [error, setError] = useState<string>('');
+  const [currentStep, setCurrentStep] = useState<AnalysisStep>(
+    AnalysisStep.UPLOAD
+  );
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
+    null
+  );
+  const [error, setError] = useState<string>("");
   const [progress, setProgress] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
 
   const handleAnalyze = async () => {
-  if (!uploadedFile) return;
-  
-  console.log('🚀 Starting analysis...');
-  console.log('📄 File:', uploadedFile.name, `(${(uploadedFile.size / 1024 / 1024).toFixed(1)} MB)`);
-  
-  setCurrentStep(AnalysisStep.PROCESSING);
-  setIsAnalyzing(true);
-  setProgress(10);
-  setError('');
+    if (!uploadedFile) return;
 
-  // Create FormData
-  const formData = new FormData();
-  formData.append('video', uploadedFile);
-  formData.append('max_duration', maxDuration.toString());
-  formData.append('save_to_blob', 'true');
-  formData.append('generate_video', 'true');
-  
-  console.log('📋 Form data prepared:', {
-    filename: uploadedFile.name,
-    maxDuration,
-    fileSize: uploadedFile.size
-  });
+    console.log("🚀 Starting analysis...");
+    console.log(
+      "📄 File:",
+      uploadedFile.name,
+      `(${(uploadedFile.size / 1024 / 1024).toFixed(1)} MB)`
+    );
 
-  // Progress simulation with slower increment for large files
-  const isLargeFile = uploadedFile.size > 5500000; // 5MB
-  let progressInterval: ReturnType<typeof setInterval> | undefined = undefined;
-  
-  const startProgressSimulation = () => {
-    progressInterval = setInterval(() => {
-      setProgress(prev => {
-        // Stop at 90% and wait for actual response
-        if (prev >= 90) return prev;
-        
-        // Slower progress for large files
-        const increment = isLargeFile ? 3 : 8;
-        const newProgress = prev + Math.random() * increment;
-        
-        console.log('📊 Progress update:', Math.round(newProgress) + '%');
-        return Math.min(newProgress, 90);
-      });
-    }, isLargeFile ? 3000 : 2000); // Slower updates for large files
-  };
+    setCurrentStep(AnalysisStep.PROCESSING);
+    setIsAnalyzing(true);
+    setProgress(5);
+    setError("");
+    setElapsedSeconds(0);
 
-  startProgressSimulation();
-  setProgress(30);
+    // Create FormData
+    const formData = new FormData();
+    formData.append("video", uploadedFile);
+    formData.append("max_duration", maxDuration.toString());
+    formData.append("save_to_blob", "true");
+    formData.append("generate_video", "true");
 
-  try {
-    console.log('📤 Sending request to:', `${FASTAPI_URL}/analyze`);
-    console.log('⏱️ Timeout set to:', 900000, 'ms (15 minutes)');
-
-    const response = await axios.post(`${FASTAPI_URL}/analyze`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      timeout: 900000, // 15 minutes
-      
-      // Monitor upload progress
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          const uploadPercent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          console.log('📤 Upload progress:', uploadPercent + '%');
-          
-          // Update progress bar for upload phase (0-30%)
-          if (uploadPercent <= 100) {
-            const adjustedProgress = Math.min(30 + (uploadPercent * 0.3), 60);
-            setProgress(adjustedProgress);
-          }
-        }
-      }
+    console.log("📋 Form data prepared:", {
+      filename: uploadedFile.name,
+      maxDuration,
+      fileSize: uploadedFile.size,
     });
 
-    // Clear progress interval immediately when response received
-    if (progressInterval) clearInterval(progressInterval);
-    console.log('✅ Response received!');
-    
-    // Log response details
-    console.log('📊 Response status:', response.status);
-    console.log('📦 Response headers:', response.headers);
-    
-    if (response.data) {
-      console.log('🔍 Response data keys:', Object.keys(response.data));
-      console.log('📏 Response size:', JSON.stringify(response.data).length, 'bytes');
-      
-      // Check for required fields
-      if (!response.data.metadata) {
-        console.warn('⚠️ No metadata in response');
-      }
-      
-      if (!response.data.unique_persons && response.data.unique_persons !== 0) {
-        console.warn('⚠️ No unique_persons in response');
-      }
+    // Keep initial small start; further progress will be driven by timer below
+    setProgress(5);
 
-      // Set progress to 100% before updating state
-      setProgress(100);
-      
-      // Update state
-      setAnalysisResult(response.data);
-      setCurrentStep(AnalysisStep.COMPLETED);
-      
-      console.log('🎉 Analysis completed successfully!');
-      console.log('👥 Unique persons:', response.data.unique_persons);
-      console.log('🔄 Total interactions:', response.data.total_interactions);
-      
-    } else {
-      throw new Error('No data received from analysis');
-    }
+    try {
+      console.log("📤 Sending request to:", `${FASTAPI_URL}/analyze`);
+      console.log("⏱️ Timeout set to:", 900000, "ms (15 minutes)");
 
-  } catch (err: any) {
-    if (progressInterval) clearInterval(progressInterval);
-    console.error('❌ Analysis failed:', err);
-    
-    // Detailed error logging
-    if (err.response) {
-      console.error('📥 Response status:', err.response.status);
-      console.error('📥 Response headers:', err.response.headers);
-      console.error('📥 Response data:', err.response.data);
-    } else if (err.request) {
-      console.error('📤 Request details:', {
-        readyState: err.request.readyState,
-        status: err.request.status,
-        statusText: err.request.statusText
+      const response = await axios.post(`${FASTAPI_URL}/analyze`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 900000, // 15 minutes
+
+        // Monitor upload progress
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const uploadPercent = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            console.log("📤 Upload progress:", uploadPercent + "%");
+
+            // Keep early phase small: start ~5%, cap ~30%
+            if (uploadPercent <= 100) {
+              const adjustedProgress = Math.min(5 + uploadPercent * 0.2, 30);
+              setProgress(adjustedProgress);
+            }
+          }
+        },
       });
-    } else {
-      console.error('⚙️ Setup error:', err.message);
-    }
 
-    // Set appropriate error messages
-    let errorMessage = 'Analysis failed';
-    
-    if (err.code === 'ECONNABORTED') {
-      errorMessage = 'Request timeout - file mungkin terlalu besar atau server sedang busy';
-    } else if (err.response?.status === 413) {
-      errorMessage = 'File terlalu besar - maksimal 50MB';
-    } else if (err.response?.status === 500) {
-      errorMessage = 'Server error - coba lagi dalam beberapa menit';
-    } else if (err.response?.data?.detail) {
-      errorMessage = err.response.data.detail;
-    } else if (err.message) {
-      errorMessage = err.message;
-    }
+      // Response received
+      console.log("✅ Response received!");
 
-    setCurrentStep(AnalysisStep.ERROR);
-    setError(errorMessage);
-    
-  } finally {
-    if (progressInterval) clearInterval(progressInterval);
-    setIsAnalyzing(false);
-    console.log('🏁 Analysis process finished');
-  }
-};
+      // Log response details
+      console.log("📊 Response status:", response.status);
+      console.log("📦 Response headers:", response.headers);
+
+      if (response.data) {
+        console.log("🔍 Response data keys:", Object.keys(response.data));
+        console.log(
+          "📏 Response size:",
+          JSON.stringify(response.data).length,
+          "bytes"
+        );
+
+        // Check for required fields
+        if (!response.data.metadata) {
+          console.warn("⚠️ No metadata in response");
+        }
+
+        if (
+          !response.data.unique_persons &&
+          response.data.unique_persons !== 0
+        ) {
+          console.warn("⚠️ No unique_persons in response");
+        }
+
+        // Set progress to 100% before updating state
+        setProgress(100);
+
+        // Update state
+        setAnalysisResult(response.data);
+        setCurrentStep(AnalysisStep.COMPLETED);
+
+        console.log("🎉 Analysis completed successfully!");
+        console.log("👥 Unique persons:", response.data.unique_persons);
+        console.log("🔄 Total interactions:", response.data.total_interactions);
+      } else {
+        throw new Error("No data received from analysis");
+      }
+    } catch (err: any) {
+      console.error("❌ Analysis failed:", err);
+
+      // Detailed error logging
+      if (err.response) {
+        console.error("📥 Response status:", err.response.status);
+        console.error("📥 Response headers:", err.response.headers);
+        console.error("📥 Response data:", err.response.data);
+      } else if (err.request) {
+        console.error("📤 Request details:", {
+          readyState: err.request.readyState,
+          status: err.request.status,
+          statusText: err.request.statusText,
+        });
+      } else {
+        console.error("⚙️ Setup error:", err.message);
+      }
+
+      // Set appropriate error messages
+      let errorMessage = "Analysis failed";
+
+      if (err.code === "ECONNABORTED") {
+        errorMessage =
+          "Request timeout - file mungkin terlalu besar atau server sedang busy";
+      } else if (err.response?.status === 413) {
+        errorMessage = "File terlalu besar - maksimal 50MB";
+      } else if (err.response?.status === 500) {
+        errorMessage = "Server error - coba lagi dalam beberapa menit";
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setCurrentStep(AnalysisStep.ERROR);
+      setError(errorMessage);
+    } finally {
+      setIsAnalyzing(false);
+      console.log("🏁 Analysis process finished");
+    }
+  };
 
   const resetAnalysis = () => {
     setCurrentStep(AnalysisStep.UPLOAD);
     setAnalysisResult(null);
     setUploadedFile(null);
     setOriginalVideoUrl(null);
-    setError('');
+    setError("");
     setProgress(0);
     setIsAnalyzing(false);
   };
@@ -257,16 +252,36 @@ function App() {
     return;
   }, [uploadedFile]);
 
+  // Run processing timer while in processing state
+  useEffect(() => {
+    if (currentStep === AnalysisStep.PROCESSING) {
+      const intervalId = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+      return () => clearInterval(intervalId);
+    }
+    return;
+  }, [currentStep]);
+
+  const formatElapsed = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    return `${minutes}m ${seconds}s`;
+  };
+
   const generateDwellTimeData = (result: AnalysisResult) => {
     // Gunakan data dwell time per rak yang sudah dihitung oleh backend
     const shelfDwellTimes = result.shelf_dwell_times || {};
 
     // Ubah format dari object ke array yang dibutuhkan oleh chart
-    const dwellData = Object.entries(shelfDwellTimes).map(([shelfId, timeInSeconds]) => ({
-      shelf: shelfId,
-      time: timeInSeconds,
-    }));
-    
+    const dwellData = Object.entries(shelfDwellTimes).map(
+      ([shelfId, timeInSeconds]) => ({
+        shelf: shelfId,
+        time: timeInSeconds,
+      })
+    );
+
     // Urutkan berdasarkan waktu terlama
     return dwellData.sort((a, b) => b.time - a.time);
   };
@@ -286,58 +301,187 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-950 to-blue-800 rounded-2xl mb-4">
-              <BarChart3 className="h-8 w-8 text-white" />
+    <div
+      className="min-h-screen"
+      style={{
+        position: "relative",
+        overflowX: "hidden",
+        background: "#FBF7F0",
+      }}
+    >
+      {/* Aurora disabled */}
+      <style>{`
+@keyframes spin{to{transform:rotate(1turn)}}
+/* Navbar spans full width with fluid padding scaling by viewport width */
+.nav-inner{width:100%;padding:clamp(12px,1.2vw,28px) clamp(24px,5vw,128px);margin:0 auto}
+/* Hero/content kept centered with larger side paddings to avoid hugging left */
+.hero-inner{max-width:1140px;padding-left:24px;padding-right:24px;margin:0 auto}
+@media (min-width:1280px){.hero-inner{max-width:1240px;padding-left:36px;padding-right:36px}}
+@media (min-width:1536px){.hero-inner{max-width:1380px;padding-left:48px;padding-right:48px}}
+@media (min-width:1920px){.hero-inner{max-width:1600px;padding-left:64px;padding-right:64px}}
+      `}</style>
+
+      {/* Glass navbar */}
+      <nav
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          backdropFilter: "saturate(140%) blur(12px)",
+          background: "rgba(251,247,240,0.68)",
+          borderBottom: "2px solid #e8e3d9",
+        }}
+      >
+        <div
+          className="nav-inner"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 15,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontWeight: 700,
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: "linear-gradient(135deg,#1f49a6,#0a193a)",
+                color: "#fff",
+                boxShadow: "0 10px 22px rgba(31,73,166,.20)",
+              }}
+            >
+              🟦
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Retail Behavior Analysis</h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Upload video pelanggan di supermarket dan dapatkan insight AI yang mendalam untuk optimasi toko Anda
-            </p>
+            <b>Tracko</b>
+          </div>
+          <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
+            <a
+              href="#features"
+              style={{
+                color: "#2a3345",
+                textDecoration: "none",
+                fontSize: 14,
+                opacity: 0.9,
+              }}
+            >
+              Fitur
+            </a>
+            <a
+              href="#results"
+              style={{
+                color: "#2a3345",
+                textDecoration: "none",
+                fontSize: 14,
+                opacity: 0.9,
+              }}
+            >
+              Hasil
+            </a>
+            <a
+              href="#insights"
+              style={{
+                color: "#2a3345",
+                textDecoration: "none",
+                fontSize: 14,
+                opacity: 0.9,
+              }}
+            >
+              AI Insights
+            </a>
           </div>
         </div>
+      </nav>
+
+      {/* spacer to offset fixed navbar height */}
+      <div style={{ height: 60 }} />
+
+      {/* Hero */}
+      <header
+        className="hero-inner"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          margin: "0 auto",
+          paddingTop: "50px",
+          paddingBottom: "6px",
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            gap: 8,
+            alignItems: "center",
+            background: "rgba(255,255,255,.72)",
+            border: "1px solid #e0dbd2",
+            color: "#1e2b48",
+            padding: "6px 10px",
+            borderRadius: 999,
+            fontSize: 12,
+          }}
+        >
+          <i
+            style={{
+              width: 6,
+              height: 6,
+              background: "linear-gradient(135deg,#1f49a6,#0a193a)",
+              display: "inline-block",
+              borderRadius: "50%",
+            }}
+          />{" "}
+          Tracko — Light + glass, warm beige, blue‑black accents
+        </span>
+        <h1
+          style={{
+            fontSize: 44,
+            lineHeight: 1.08,
+            margin: "10px 0",
+            letterSpacing: ".1px",
+            color: "#0b1220",
+          }}
+        >
+          Upload video pelanggan, dapatkan{" "}
+          <span
+            style={{
+              background: "linear-gradient(90deg,#1f49a6,#0a193a)",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            insight AI
+          </span>{" "}
+          untuk optimasi toko
+        </h1>
+        <p
+          style={{
+            margin: "0 0 18px",
+            color: "#5b6475",
+            maxWidth: 760,
+            fontSize: 17,
+          }}
+        >
+          UI minimalis dan hangat. Aksen gradasi biru gelap — elegan di atas
+          background beige.
+        </p>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Progress Steps */}
-        {currentStep !== AnalysisStep.UPLOAD && (
-          <div className="mb-8">
-            <div className="flex items-center justify-center space-x-8">
-              {[
-                { step: AnalysisStep.UPLOAD, label: 'Upload', icon: Upload },
-                { step: AnalysisStep.PROCESSING, label: 'Processing', icon: Loader2 },
-                { step: AnalysisStep.COMPLETED, label: 'Results', icon: CheckCircle },
-              ].map(({ step, label, icon: Icon }, index) => {
-                const isActive = currentStep === step;
-                const isCompleted = Object.values(AnalysisStep).indexOf(currentStep) > Object.values(AnalysisStep).indexOf(step);
-                const isError = currentStep === AnalysisStep.ERROR;
-                
-                return (
-                  <div key={step} className="flex items-center">
-                    <div className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all ${
-                      isCompleted ? 'bg-green-100 text-green-800' :
-                      isActive ? 'bg-blue-100 text-blue-800' :
-                      isError ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-500'
-                    }`}>
-                      <Icon className={`h-5 w-5 ${step === AnalysisStep.PROCESSING && isActive ? 'animate-spin' : ''}`} />
-                      <span className="font-medium">{label}</span>
-                    </div>
-                    {index < 2 && (
-                      <div className={`w-8 h-0.5 mx-2 ${
-                        isCompleted ? 'bg-green-400' : 'bg-gray-300'
-                      }`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+      <main
+        className="max-w-7xl mx-auto px-6 py-12"
+        style={{ position: "relative", zIndex: 1 }}
+      >
+        {/* Progress Steps removed for cleaner UI */}
 
         {/* Error Message */}
         {error && (
@@ -358,87 +502,251 @@ function App() {
           </div>
         )}
 
-        {/* Upload Section */}
-        {currentStep === AnalysisStep.UPLOAD && (
+        {/* Upload + Status Section (shown during upload and processing) */}
+        {(currentStep === AnalysisStep.UPLOAD ||
+          currentStep === AnalysisStep.PROCESSING) && (
           <div className="space-y-8">
-            {/* Desktop Layout: Upload and Duration side by side */}
+            {/* Desktop Layout: Upload & Duration on left, Processing on right */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Upload Section */}
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-4">
-                    <span className="text-2xl font-bold text-blue-600">1</span>
-                  </div>
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">Upload Video</h2>
-                  <p className="text-gray-600">Upload video rekaman pelanggan berbelanja di toko</p>
-                </div>
-                <FileUpload onFileUpload={setUploadedFile} uploadedFile={uploadedFile} />
-              </div>
-
-              {/* Duration Configuration */}
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-4">
-                    <span className="text-2xl font-bold text-blue-600">2</span>
-                  </div>
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">Atur Max Duration</h2>
-                  <p className="text-gray-600">Tentukan durasi maksimal analisis video</p>
-                </div>
-                {/* // Di bagian Duration Configuration section, update line ini: */}
-                <DurationSlider 
-                  value={maxDuration} 
-                  onChange={setMaxDuration}
-                  fileSize={uploadedFile?.size} // Add this prop
-                />
-              </div>
-            </div>
-
-            {/* Analyze Button */}
-            <div className="text-center">
-              <button
-                onClick={handleAnalyze}
-                disabled={!uploadedFile || isAnalyzing}
-                className={`inline-flex items-center px-12 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 ${
-                  !uploadedFile || isAnalyzing
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-                }`}
+              {/* Upload + Max Duration (mengikuti referensi) */}
+              <div
+                className="bg-white rounded-3xl shadow-sm p-6 md:p-8"
+                style={{
+                  border: "1px solid #e6dfd2",
+                  background: "rgba(255,255,255,0.88)",
+                }}
               >
-                {isAnalyzing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mr-3"></div>
-                    <span>Menganalisis...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-6 w-6 mr-3" />
-                    <span>Mulai Analisis</span>
-                  </>
-                )}
-              </button>
+                <div
+                  className="flex items-center justify-between"
+                  style={{
+                    marginTop: -12,
+                    paddingBottom: 10,
+                    borderBottom: "1px solid #e6dfd2",
+                  }}
+                >
+                  <h3 className="font-semibold text-gray-900">
+                    1 · Upload Video
+                  </h3>
+                  <span
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-xl"
+                    style={{
+                      background: "#f6f2eb",
+                      border: "1px solid #e6dfd2",
+                      color: "#2a3556",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 999,
+                        background: "#1f49a6",
+                        display: "inline-block",
+                      }}
+                    />
+                    <span className="text-sm">MP4 · AVI · MOV (≤100MB)</span>
+                  </span>
+                </div>
+                {/* Upload di atas, slider di bawah, dibungkus border putus-putus */}
+                <div className="grid gap-4 mt-3">
+                  <div
+                    style={{
+                      border: "1px dashed #d7d1c6",
+                      borderRadius: 14,
+                      padding: "18px 16px",
+                      background: "rgba(255,255,255,.60)",
+                    }}
+                  >
+                    <div className="grid gap-5">
+                      <FileUpload
+                        onFileUpload={setUploadedFile}
+                        uploadedFile={uploadedFile}
+                        compact
+                      />
+                      <div>
+                        <div className="text-sm text-gray-700 mb-2 font-medium">
+                          Max Duration
+                        </div>
+                        <DurationSlider
+                          value={maxDuration}
+                          onChange={setMaxDuration}
+                          fileSize={uploadedFile?.size}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* <div className="grid gap-2"> */}
+                  {/* <div style={{height:10, background:'#f4efe6', border:'1px solid #e6dfd2', borderRadius:999, overflow:'hidden'}}>
+                      <div style={{height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#1f49a6,#0a193a)'}} />
+                    </div> */}
+                  {/* <small className="text-gray-600">Status: <b>Processing</b> — {Math.round(progress)}% Complete</small> */}
+                  {/* </div>  */}
+                </div>
+
+                {/* Tombol Mulai Analisis */}
+                <div className="text-center mt-6">
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={!uploadedFile || isAnalyzing}
+                    className={`inline-flex items-center px-10 py-3 rounded-2xl font-semibold text-base transition-all duration-300 ${
+                      !uploadedFile || isAnalyzing
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-blue-800 to-blue-950 hover:from-blue-900 hover:to-blue-[980] text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                    }`}
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mr-3"></div>
+                        <span>Menganalisis...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-6 w-6 mr-3" />
+                        <span>Mulai Analisis</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Processing status card */}
+              <div
+                className="bg-white rounded-3xl shadow-sm p-6 md:p-8"
+                style={{
+                  border: "1px solid #e6dfd2",
+                  background: "rgba(255,255,255,0.88)",
+                }}
+              >
+                <div
+                  className="flex items-center justify-between"
+                  style={{
+                    marginTop: -12,
+                    paddingBottom: 10,
+                    borderBottom: "1px solid #e6dfd2",
+                  }}
+                >
+                  <h3 className="font-semibold text-gray-900">
+                    2 · Tahap Analisis
+                  </h3>
+                </div>
+                <div className="grid gap-4 mt-4">
+                  {/* Upload row */}
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <span
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-lg"
+                      style={{
+                        background: "rgba(251,247,240,0.6)",
+                        border: "1px solid #e6dfd2",
+                        color: "#1e2b48",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 999,
+                          background: uploadedFile ? "#16a34a" : "#cbd5e1",
+                          display: "inline-block",
+                        }}
+                      />{" "}
+                      Upload
+                    </span>
+                    <div
+                      className="flex-1"
+                      style={{
+                        height: 10,
+                        background: "#f4efe6",
+                        border: "1px solid #e6dfd2",
+                        borderRadius: 999,
+                        overflow: "hidden",
+                        padding: "2px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: uploadedFile ? "100%" : "5%",
+                          background: "linear-gradient(90deg,#1f49a6,#0a193a)",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Processing row with time-driven progress: reach ~90% at 120s */}
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <span
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-lg"
+                      style={{
+                        background: "rgba(251,247,240,0.6)",
+                        border: "1px solid #e6dfd2",
+                        color: "#1e2b48",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 999,
+                          background: isAnalyzing ? "#16a34a" : "#cbd5e1",
+                          display: "inline-block",
+                        }}
+                      />{" "}
+                      Processing
+                    </span>
+                    <div
+                      className="flex-1"
+                      style={{
+                        height: 10,
+                        background: "#f4efe6",
+                        border: "1px solid #e6dfd2",
+                        borderRadius: 999,
+                        overflow: "hidden",
+                        padding: "2px",
+                      }}
+                    >
+                      {(() => {
+                        // target 90% at 120s => per second gain = 90/120 = 0.75
+                        const timeDriven = Math.min(
+                          90,
+                          5 + elapsedSeconds * 0.75
+                        );
+                        const width = isAnalyzing
+                          ? Math.max(5, Math.min(90, timeDriven))
+                          : 5;
+                        return (
+                          <div
+                            style={{
+                              height: "100%",
+                              width: `${width}%`,
+                              background:
+                                "linear-gradient(90deg,#1f49a6,#0a193a)",
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  {isAnalyzing && (
+                    <div className="text-gray-800 font-medium mt-1">
+                      Waktu proses: {formatElapsed(elapsedSeconds)}
+                    </div>
+                  )}
+                  <p className="text-gray-600 mt-1">
+                    Durasi lebih panjang memberi analisis lebih komprehensif,
+                    namun memerlukan waktu proses yang lebih lama.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Processing Section */}
-        {currentStep === AnalysisStep.PROCESSING && (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-950 to-blue-800 rounded-3xl mb-6">
-              <Loader2 className="h-10 w-10 text-white animate-spin" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Analyzing Video...</h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Sedang menganalisis perilaku pelanggan di video Anda
-            </p>
-            <div className="max-w-md mx-auto bg-gray-200 rounded-full h-3">
-              <div 
-                className="bg-gradient-to-r from-blue-600 to-blue-800 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-sm text-gray-500 mt-2">{Math.round(progress)}% Complete</p>
-          </div>
-        )}
+        {/* Removed separate Processing Section; progress updates in the status card */}
 
         {/* Results Section */}
         {currentStep === AnalysisStep.COMPLETED && analysisResult && (
@@ -448,7 +756,9 @@ function App() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl mb-4">
                 <Users className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-2">Hasil Analisis</h2>
+              <h2 className="text-4xl font-bold text-gray-900 mb-2">
+                Hasil Analisis
+              </h2>
               <p className="text-lg text-gray-600 mb-6">
                 Analisis selesai untuk video berdurasi {maxDuration} detik
               </p>
@@ -463,10 +773,18 @@ function App() {
             {/* Side-by-side Videos (Desktop) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Original Video (Before) */}
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+              <div
+                className="bg-white rounded-3xl shadow-sm p-8"
+                style={{
+                  border: "1px solid #e6dfd2",
+                  background: "rgba(255,255,255,0.88)",
+                }}
+              >
                 <div className="flex items-center mb-6">
                   <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
-                  <h3 className="text-xl font-semibold text-gray-900">Original Video</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Original Video
+                  </h3>
                 </div>
                 {originalVideoUrl ? (
                   <video
@@ -477,24 +795,38 @@ function App() {
                     <source src={originalVideoUrl} type="video/mp4" />
                   </video>
                 ) : (
-                  <div className="text-gray-500">No original video available</div>
+                  <div className="text-gray-500">
+                    No original video available
+                  </div>
                 )}
               </div>
 
               {/* Annotated Video (After) */}
-              {(analysisResult.download_links?.annotated_video_stream || analysisResult.download_links?.annotated_video_blob_path || analysisResult.download_links?.annotated_video_download) && (
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+              {(analysisResult.download_links?.annotated_video_stream ||
+                analysisResult.download_links?.annotated_video_blob_path ||
+                analysisResult.download_links?.annotated_video_download) && (
+                <div
+                  className="bg-white rounded-3xl shadow-sm p-8"
+                  style={{
+                    border: "1px solid #e6dfd2",
+                    background: "rgba(255,255,255,0.88)",
+                  }}
+                >
                   <div className="flex items-center mb-6">
                     <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                    <h3 className="text-xl font-semibold text-gray-900">Annotated Video</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Annotated Video
+                    </h3>
                   </div>
                   {(() => {
                     const links = analysisResult.download_links || {};
                     const url = links.annotated_video_stream
                       ? `${FASTAPI_URL}${links.annotated_video_stream}`
                       : links.annotated_video_blob_path
-                        ? `${FASTAPI_URL}/stream?blob=${encodeURIComponent(links.annotated_video_blob_path)}`
-                        : undefined;
+                      ? `${FASTAPI_URL}/stream?blob=${encodeURIComponent(
+                          links.annotated_video_blob_path
+                        )}`
+                      : undefined;
                     return (
                       <AnnotatedVideo
                         videoUrl={url}
@@ -511,17 +843,26 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-gradient-to-br from-blue-950 to-blue-800 rounded-2xl p-6 text-white">
                 <h4 className="text-lg font-semibold mb-2">Unique Persons</h4>
-                <p className="text-3xl font-bold">{analysisResult.unique_persons}</p>
+                <p className="text-3xl font-bold">
+                  {analysisResult.unique_persons}
+                </p>
                 <p className="text-blue-200 text-sm">Detected in video</p>
               </div>
               <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl p-6 text-white">
                 <h4 className="text-lg font-semibold mb-2">Detected Actions</h4>
-                <p className="text-3xl font-bold">{analysisResult.total_interactions}</p>
+                <p className="text-3xl font-bold">
+                  {analysisResult.total_interactions}
+                </p>
                 <p className="text-blue-200 text-sm">Customer actions</p>
               </div>
               <div className="bg-gradient-to-br from-blue-800 to-blue-600 rounded-2xl p-6 text-white">
                 <h4 className="text-lg font-semibold mb-2">Avg Dwell Time</h4>
-                <p className="text-3xl font-bold">{analysisResult.dwell_time_analysis?.average_dwell_time?.toFixed(1) || 0}s</p>
+                <p className="text-3xl font-bold">
+                  {analysisResult.dwell_time_analysis?.average_dwell_time?.toFixed(
+                    1
+                  ) || 0}
+                  s
+                </p>
                 <p className="text-blue-200 text-sm">Per customer</p>
               </div>
             </div>
@@ -529,41 +870,69 @@ function App() {
             {/* Visualizations Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Heatmap */}
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+              <div
+                className="bg-white rounded-3xl shadow-sm p-8"
+                style={{
+                  border: "1px solid #e6dfd2",
+                  background: "rgba(255,255,255,0.88)",
+                }}
+              >
                 <div className="flex items-center mb-6">
                   <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
-                  <h3 className="text-xl font-semibold text-gray-900">Customer Traffic Heatmap</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Customer Traffic Heatmap
+                  </h3>
                 </div>
-                <Heatmap 
-                  data={analysisResult.heatmap_data} 
+                <Heatmap
+                  data={analysisResult.heatmap_data}
                   heatmapImageUrl={analysisResult.download_links?.heatmap_image}
                 />
               </div>
 
               {/* Dwell Time Chart */}
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+              <div
+                className="bg-white rounded-3xl shadow-sm p-8"
+                style={{
+                  border: "1px solid #e6dfd2",
+                  background: "rgba(255,255,255,0.88)",
+                }}
+              >
                 <div className="flex items-center mb-6">
                   <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                  <h3 className="text-xl font-semibold text-gray-900">Dwell Time per Area</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Dwell Time per Area
+                  </h3>
                 </div>
-                <DwellTimeChart 
-                  data={generateDwellTimeData(analysisResult)} 
-                />
+                <DwellTimeChart data={generateDwellTimeData(analysisResult)} />
               </div>
             </div>
 
             {/* Customer Journey */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-              <CustomerJourney 
+            <div
+              className="bg-white rounded-3xl shadow-sm p-8"
+              style={{
+                border: "1px solid #e6dfd2",
+                background: "rgba(255,255,255,0.88)",
+              }}
+            >
+              <CustomerJourney
                 journeyData={generateJourneyData(analysisResult)}
               />
             </div>
 
             {/* Behavior Archetypes */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <div
+              className="bg-white rounded-3xl shadow-sm p-8"
+              style={{
+                border: "1px solid #e6dfd2",
+                background: "rgba(255,255,255,0.88)",
+              }}
+            >
               <div className="flex items-center mb-6">
                 <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                <h3 className="text-xl font-semibold text-gray-900">Behavioral Archetypes</h3>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Behavioral Archetypes
+                </h3>
               </div>
               <BehaviorArchetypes analysisData={analysisResult} />
             </div>
@@ -572,7 +941,9 @@ function App() {
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-8 text-white">
               <div className="flex items-center mb-6">
                 <div className="w-3 h-3 bg-yellow-400 rounded-full mr-3"></div>
-                <h3 className="text-xl font-semibold">AI Insights & Rekomendasi</h3>
+                <h3 className="text-xl font-semibold">
+                  AI Insights & Rekomendasi
+                </h3>
               </div>
               <InsightRecommendations analysisData={analysisResult} />
             </div>
