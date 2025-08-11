@@ -64,6 +64,7 @@ interface AnalysisResult {
     annotated_video_blob_path?: string;
     annotated_video_download?: string;
     heatmap_image?: string;
+    shelf_map_image?: string;
     csv_report?: string;
     json_results?: string;
   };
@@ -770,71 +771,52 @@ function App() {
               </button>
             </div>
 
-            {/* Side-by-side Videos (Desktop) */}
+            {/* Annotated Video + Shelf Map: stacked on mobile, side-by-side on desktop */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Original Video (Before) */}
-              <div
-                className="bg-white rounded-3xl shadow-sm p-8"
-                style={{
-                  border: "1px solid #e6dfd2",
-                  background: "rgba(255,255,255,0.88)",
-                }}
-              >
-                <div className="flex items-center mb-6">
-                  <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Original Video
-                  </h3>
-                </div>
-                {originalVideoUrl ? (
-                  <video
-                    controls
-                    className="w-full h-auto rounded-xl"
-                    preload="metadata"
-                  >
-                    <source src={originalVideoUrl} type="video/mp4" />
-                  </video>
-                ) : (
-                  <div className="text-gray-500">
-                    No original video available
-                  </div>
-                )}
-              </div>
-
-              {/* Annotated Video (After) */}
               {(analysisResult.download_links?.annotated_video_stream ||
                 analysisResult.download_links?.annotated_video_blob_path ||
                 analysisResult.download_links?.annotated_video_download) && (
                 <div
                   className="bg-white rounded-3xl shadow-sm p-8"
-                  style={{
-                    border: "1px solid #e6dfd2",
-                    background: "rgba(255,255,255,0.88)",
-                  }}
+                  style={{ border: "1px solid #e6dfd2", background: "rgba(255,255,255,0.88)" }}
                 >
                   <div className="flex items-center mb-6">
                     <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      Annotated Video
-                    </h3>
+                    <h3 className="text-xl font-semibold text-gray-900">Annotated Video</h3>
                   </div>
                   {(() => {
                     const links = analysisResult.download_links || {};
                     const url = links.annotated_video_stream
                       ? `${FASTAPI_URL}${links.annotated_video_stream}`
                       : links.annotated_video_blob_path
-                      ? `${FASTAPI_URL}/stream?blob=${encodeURIComponent(
-                          links.annotated_video_blob_path
-                        )}`
+                      ? `${FASTAPI_URL}/stream?blob=${encodeURIComponent(links.annotated_video_blob_path)}`
                       : undefined;
                     return (
                       <AnnotatedVideo
                         videoUrl={url}
                         downloadUrl={links.annotated_video_download}
                         analysisId={analysisResult.metadata?.analysis_id}
+                        originalUrl={originalVideoUrl || undefined}
                       />
                     );
                   })()}
+                </div>
+              )}
+
+              {analysisResult.download_links?.shelf_map_image && (
+                <div
+                  className="bg-white rounded-3xl shadow-sm p-8"
+                  style={{ border: "1px solid #e6dfd2", background: "rgba(255,255,255,0.88)" }}
+                >
+                  <div className="flex items-center mb-6">
+                    <div className="w-3 h-3 bg-amber-500 rounded-full mr-3"></div>
+                    <h3 className="text-xl font-semibold text-gray-900">Shelf Map</h3>
+                  </div>
+                  <img
+                    src={analysisResult.download_links.shelf_map_image}
+                    alt="Shelf Map"
+                    className="w-full rounded-xl border border-gray-200"
+                  />
                 </div>
               )}
             </div>

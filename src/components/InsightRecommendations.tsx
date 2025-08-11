@@ -27,7 +27,7 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
   const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL as string | undefined;
   const apiBase = (FASTAPI_URL ? FASTAPI_URL.replace(/\/+$/, '') : '') || '';
 
-  const [insights, setInsights] = useState<Array<{type: string; title: string; content: string}>>([]);
+  const [insights, setInsights] = useState<Array<{type: string; title: string; content: string | string[]}>>([]);
   const [summaryInsight, setSummaryInsight] = useState<string>("");
   const [llmLoading, setLlmLoading] = useState<boolean>(false);
   const [llmError, setLlmError] = useState<string>("");
@@ -232,7 +232,34 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-lg mb-3">{insight.title}</h4>
-                <p className="text-sm leading-relaxed opacity-90">{insight.content}</p>
+                {(() => {
+                  const c: any = (insight as any).content;
+                  const renderList = (arr: any[]) => (
+                    <ul className="text-sm leading-relaxed opacity-90 list-disc pl-5">
+                      {arr.filter(Boolean).map((s, i) => (
+                        <li key={i}>{String(s)}</li>
+                      ))}
+                    </ul>
+                  );
+                  if (Array.isArray(c)) return renderList(c);
+                  if (typeof c === 'string') {
+                    const t = c.trim();
+                    if (t.startsWith('[') && t.endsWith(']')) {
+                      try {
+                        const arr = JSON.parse(t);
+                        if (Array.isArray(arr)) return renderList(arr);
+                      } catch {
+                        // Robust fallback: capture tokens inside either double or single quotes
+                        const tokens = Array.from(t.matchAll(/"([^"]*)"|'([^']*)'/g))
+                          .map(m => (m[1] ?? m[2])?.trim())
+                          .filter(Boolean) as string[];
+                        if (tokens.length) return renderList(tokens);
+                      }
+                    }
+                    return <p className="text-sm leading-relaxed opacity-90">{c}</p>;
+                  }
+                  return <p className="text-sm leading-relaxed opacity-90">{String(c ?? '')}</p>;
+                })()}
               </div>
             </div>
           </div>

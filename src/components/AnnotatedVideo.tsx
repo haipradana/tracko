@@ -5,9 +5,10 @@ interface AnnotatedVideoProps {
   videoUrl?: string;
   analysisId?: string;
   downloadUrl?: string;
+  originalUrl?: string;
 }
 
-const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, downloadUrl }) => {
+const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, downloadUrl, originalUrl }) => {
   const [videoError, setVideoError] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
@@ -54,6 +55,8 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
 
   return (
     <div className="space-y-6">
+
+      {/*
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <CheckCircle className="h-6 w-6 text-green-500" />
@@ -62,14 +65,8 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
             <p className="text-gray-600">Video dengan tracking dan behavior analysis</p>
           </div>
         </div>
-        <button
-          onClick={handleDownload}
-          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl hover:from-blue-700 hover:to-blue-900 transition-colors"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Download
-        </button>
       </div>
+      */}
 
       <div className="relative bg-gray-900 rounded-2xl overflow-hidden">
         {!videoLoaded && (
@@ -98,6 +95,26 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
             <Play className="h-4 w-4 inline mr-1" />
             Analysis ID: {analysisId || 'Unknown'}
           </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={handleDownload}
+          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl hover:from-blue-700 hover:to-blue-900 transition-colors"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download
+        </button>
+        {originalUrl && (
+          <a
+            href={originalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
+          >
+            View Original Video
+          </a>
         )}
       </div>
     </div>
