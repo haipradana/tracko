@@ -7,13 +7,16 @@ interface DwellTimeData {
 
 interface DwellTimeChartProps {
   data?: DwellTimeData[];
+  altData?: DwellTimeData[]; // cumulative (person-seconds)
   title?: string;
 }
 
 const DwellTimeChart: React.FC<DwellTimeChartProps> = ({ 
   data, 
+  altData,
   title = "Dwell Time per Shelf (seconds)" 
 }) => {
+  const [mode, setMode] = React.useState<'unique'|'cumulative'>('unique');
   // Default data if none provided - sorted by dwell time descending like in Gradio
   const defaultData: DwellTimeData[] = [
     { shelf: 'shelf_1', time: 1.60 },
@@ -24,7 +27,7 @@ const DwellTimeChart: React.FC<DwellTimeChartProps> = ({
     { shelf: 'shelf_3', time: 0.08 },
   ];
 
-  const dwellData = data || defaultData;
+  const dwellData = (mode === 'unique' ? data : altData) || data || defaultData;
   
   // Sort by dwell time descending and limit to top 6 shelves
   const sortedData = [...dwellData].sort((a, b) => b.time - a.time).slice(0, 6);
@@ -34,9 +37,17 @@ const DwellTimeChart: React.FC<DwellTimeChartProps> = ({
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>
-        <p className="text-gray-600">Dwell Time (Rata-rata) Tiap Rak</p>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-1">{title}</h3>
+          <p className="text-gray-600 text-sm">{mode === 'unique' ? 'Unique per frame (≤ durasi video)' : 'Cumulative person-seconds (bisa > durasi video)'} </p>
+        </div>
+        {altData && (
+          <div className="inline-flex bg-gray-100 rounded-xl p-1 border border-gray-200">
+            <button onClick={()=>setMode('unique')} className={`px-3 py-1 rounded-lg text-sm ${mode==='unique'?'bg-white shadow font-semibold':'text-gray-600'}`}>Unique</button>
+            <button onClick={()=>setMode('cumulative')} className={`px-3 py-1 rounded-lg text-sm ${mode==='cumulative'?'bg-white shadow font-semibold':'text-gray-600'}`}>Cumulative</button>
+          </div>
+        )}
       </div>
 
       {/* Horizontal Bar Chart */}
@@ -79,7 +90,7 @@ const DwellTimeChart: React.FC<DwellTimeChartProps> = ({
         <ul className="text-xs text-blue-800 space-y-1">
           <li className="flex items-start">
             <span className="text-blue-500 mr-1">•</span>
-            <span>{sortedData[0]?.shelf} memiliki dwell time tertinggi ({sortedData[0]?.time.toFixed(2)}s)</span>
+            <span>{sortedData[0]?.shelf} memiliki {mode==='unique'?'dwell time':'dwell load'} tertinggi ({sortedData[0]?.time.toFixed(2)}s)</span>
           </li>
           <li className="flex items-start">
             <span className="text-blue-500 mr-1">•</span>

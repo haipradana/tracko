@@ -130,6 +130,7 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
   const [promptLoading, setPromptLoading] = useState(false);
   const [promptError, setPromptError] = useState<string>("");
   const [promptOutput, setPromptOutput] = useState<string>("");
+  const [promptAnswer, setPromptAnswer] = useState<string>("");
 
   const handlePromptInsights = async () => {
     try {
@@ -151,18 +152,47 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
         },
         heatmap_url: heatmapUrl,
       };
-      const resp = await fetch(`${apiBase}/ai/insights`, {
+      let resp = await fetch(`${apiBase}/ai/qa/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!resp.ok) throw new Error(`Backend responded ${resp.status}`);
-      const parsed = await resp.json();
-      const items: Array<{type: string; title: string; content: string; priority?: string}> = Array.isArray(parsed?.items) ? parsed.items : [];
-      const summary: string = parsed.summary || '';
-      setInsights(items);
-      setSummaryInsight(summary);
-      setPromptOutput('Insight diperbarui berdasarkan prompt.');
+      if (resp.ok && resp.body) {
+        try {
+          setPromptAnswer("");
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            setPromptAnswer((prev) => (prev ? prev + chunk : chunk));
+          }
+          setPromptOutput('');
+        } catch (_e) {
+          // Stream failed mid-way: fallback to non-stream
+          const resp2 = await fetch(`${apiBase}/ai/qa`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!resp2.ok) throw new Error(`Backend responded ${resp2.status}`);
+          const parsed2 = await resp2.json();
+          setPromptAnswer(String(parsed2?.answer || ''));
+          setPromptOutput('');
+        }
+      } else {
+        // Fallback to non-streaming
+        resp = await fetch(`${apiBase}/ai/qa`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error(`Backend responded ${resp.status}`);
+        const parsed = await resp.json();
+        setPromptAnswer(String(parsed?.answer || ''));
+        setPromptOutput('');
+      }
     } catch (e:any) {
       setPromptError(e?.message || 'Gagal generate insight (backend)');
     } finally {
@@ -287,9 +317,14 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
               </button>
               {promptError && <span className="text-red-400 text-sm">{promptError}</span>}
             </div>
-            {promptOutput && (
+      {promptOutput && (
               <div className="border border-white/10 rounded-xl p-3 bg-white/5 whitespace-pre-wrap text-sm opacity-90">
                 {promptOutput}
+              </div>
+            )}
+            {promptAnswer && (
+              <div className="border border-white/10 rounded-xl p-4 bg-white/5 whitespace-pre-wrap text-sm opacity-90">
+                {promptAnswer}
               </div>
             )}
           </div>

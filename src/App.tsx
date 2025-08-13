@@ -885,7 +885,14 @@ function App() {
                     Dwell Time per Area
                   </h3>
                 </div>
-                <DwellTimeChart data={generateDwellTimeData(analysisResult)} />
+                <DwellTimeChart 
+                  data={generateDwellTimeData(analysisResult)} 
+                  altData={(() => {
+                    const load = (analysisResult as any).shelf_dwell_load_seconds || {};
+                    const asArr = Object.entries(load).map(([shelf, seconds]) => ({ shelf, time: seconds as number }));
+                    return asArr.sort((a,b)=>b.time-a.time);
+                  })()}
+                />
               </div>
             </div>
 
