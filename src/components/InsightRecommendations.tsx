@@ -27,8 +27,8 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
   const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL as string | undefined;
   const apiBase = (FASTAPI_URL ? FASTAPI_URL.replace(/\/+$/, '') : '') || '';
 
-  const [insights, setInsights] = useState<Array<{type: string; title: string; content: string | string[]}>>([]);
-  const [summaryInsight, setSummaryInsight] = useState<string>("");
+  const [insights, setInsights] = useState<Array<{type: string; title: string; content: string | string[] | Record<string, any>}>>([]);
+  const [summaryInsight, setSummaryInsight] = useState<any>("");
   const [llmLoading, setLlmLoading] = useState<boolean>(false);
   const [llmError, setLlmError] = useState<string>("");
 
@@ -108,8 +108,8 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
       });
       if (!resp.ok) throw new Error(`Backend responded ${resp.status}`);
       const parsed = await resp.json();
-      const items: Array<{type: string; title: string; content: string; priority?: string}> = Array.isArray(parsed?.items) ? parsed.items : [];
-      const summary: string = parsed.summary || '';
+      const items: Array<{type: string; title: string; content: string | string[] | Record<string, any>; priority?: string}> = Array.isArray(parsed?.items) ? parsed.items : [];
+      const summary = (parsed as any)?.summary ?? '';
       setInsights(items);
       setSummaryInsight(summary);
     } catch (e: any) {
@@ -230,6 +230,46 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
     }
   };
 
+  // Safe renderer for arbitrary content from LLM (string | list | object)
+  const renderAny = (val: any) => {
+    const renderList = (arr: any[]) => (
+      <ul className="text-sm leading-relaxed opacity-90 list-disc pl-5">
+        {arr.filter(Boolean).map((s, i) => (
+          <li key={i}>{String(s)}</li>
+        ))}
+      </ul>
+    );
+    if (val == null) return null;
+    if (Array.isArray(val)) return renderList(val);
+    if (typeof val === 'string') {
+      const t = val.trim();
+      if (t.startsWith('[') && t.endsWith(']')) {
+        try {
+          const arr = JSON.parse(t);
+          if (Array.isArray(arr)) return renderList(arr);
+        } catch {}
+        const tokens = Array.from(t.matchAll(/"([^"]*)"|'([^']*)'/g)).map(m => (m[1] ?? m[2])?.trim()).filter(Boolean) as string[];
+        if (tokens.length) return renderList(tokens);
+      }
+      return <p className="text-sm leading-relaxed opacity-90">{t}</p>;
+    }
+    if (typeof val === 'object') {
+      // Render known structured objects like { key_findings: [], action_plan: [] }
+      const entries = Object.entries(val as Record<string, any>);
+      return (
+        <div className="space-y-2 text-sm opacity-90">
+          {entries.map(([k, v]) => (
+            <div key={k}>
+              <b className="block mb-1 capitalize">{k.replace(/_/g, ' ')}</b>
+              {Array.isArray(v) ? renderList(v) : <p className="leading-relaxed">{String(v)}</p>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return <p className="text-sm leading-relaxed opacity-90">{String(val)}</p>;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -262,34 +302,7 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-lg mb-3">{insight.title}</h4>
-                {(() => {
-                  const c: any = (insight as any).content;
-                  const renderList = (arr: any[]) => (
-                    <ul className="text-sm leading-relaxed opacity-90 list-disc pl-5">
-                      {arr.filter(Boolean).map((s, i) => (
-                        <li key={i}>{String(s)}</li>
-                      ))}
-                    </ul>
-                  );
-                  if (Array.isArray(c)) return renderList(c);
-                  if (typeof c === 'string') {
-                    const t = c.trim();
-                    if (t.startsWith('[') && t.endsWith(']')) {
-                      try {
-                        const arr = JSON.parse(t);
-                        if (Array.isArray(arr)) return renderList(arr);
-                      } catch {
-                        // Robust fallback: capture tokens inside either double or single quotes
-                        const tokens = Array.from(t.matchAll(/"([^"]*)"|'([^']*)'/g))
-                          .map(m => (m[1] ?? m[2])?.trim())
-                          .filter(Boolean) as string[];
-                        if (tokens.length) return renderList(tokens);
-                      }
-                    }
-                    return <p className="text-sm leading-relaxed opacity-90">{c}</p>;
-                  }
-                  return <p className="text-sm leading-relaxed opacity-90">{String(c ?? '')}</p>;
-                })()}
+                {renderAny((insight as any).content)}
               </div>
             </div>
           </div>
@@ -297,7 +310,7 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
         {summaryInsight && (
           <div className="border rounded-2xl p-6 bg-white/5 border-white/10">
             <h4 className="font-semibold mb-2">Kesimpulan</h4>
-            <p className="text-sm opacity-90">{summaryInsight}</p>
+            {renderAny(summaryInsight)}
           </div>
         )}
       </div>
