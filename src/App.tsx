@@ -7,6 +7,7 @@ import CustomerJourney from "./components/CustomerJourney";
 import BehaviorArchetypes from "./components/BehaviorArchetypes";
 import InsightRecommendations from "./components/InsightRecommendations";
 import AnnotatedVideo from "./components/AnnotatedVideo";
+import TopActions from "./components/TopActions";
 import { AlertCircle, Sparkles } from "lucide-react";
 import axios from "axios";
 
@@ -451,34 +452,52 @@ function App() {
         <span
           style={{
             display: "inline-flex",
-            gap: 8,
+            gap: 7,
             alignItems: "center",
-            background: "rgba(255,255,255,.72)",
+            background: "rgba(255,255,255,.80)",
             border: "1px solid #e0dbd2",
             color: "#1e2b48",
-            padding: "6px 10px",
+            padding: "7px 16px",
             borderRadius: 999,
-            fontSize: 12,
+            fontSize: 15,
+            fontWeight: 500,
+            letterSpacing: ".1px",
           }}
         >
           <i
             style={{
-              width: 6,
-              height: 6,
+              width: 7,
+              height: 7,
               background: "linear-gradient(135deg,#1f49a6,#0a193a)",
               display: "inline-block",
               borderRadius: "50%",
             }}
           />{" "}
-          Tracko — Track Your Store
+          <span
+            style={{
+              background: "linear-gradient(90deg,#1f49a6,#0a193a)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              fontWeight: 600,
+              fontSize: 16.5,
+              marginRight: 3,
+              // fontFamily stays default (do not override)
+            }}
+          >
+            Tracko
+          </span>
+          — Track Your Store
         </span>
         <h1
           style={{
-            fontSize: 44,
+            fontSize: 48,
             lineHeight: 1.08,
             margin: "10px 0",
             letterSpacing: ".1px",
             color: "#0b1220",
+            fontWeight: 500,
+            fontFamily: "'Poppins', 'Segoe UI', 'Montserrat', 'Helvetica Neue', Arial, sans-serif",
+            textShadow: "0 2px 16px rgba(31,73,166,0.08)",
           }}
         >
           {currentStep === AnalysisStep.COMPLETED ? (
@@ -490,7 +509,10 @@ function App() {
                 style={{
                   background: "linear-gradient(90deg,#1f49a6,#0a193a)",
                   WebkitBackgroundClip: "text",
-                  color: "transparent",
+                  WebkitTextFillColor: "transparent",
+                  fontWeight: 600,
+                  fontFamily: "'Poppins', 'Segoe UI', 'Montserrat', 'Helvetica Neue', Arial, sans-serif",
+                  letterSpacing: ".5px",
                 }}
               >
                 insight AI
@@ -537,8 +559,8 @@ function App() {
           >
             {/* <Download className="h-4 w-4 mr-2" /> */}
             {currentStep === AnalysisStep.COMPLETED
-              ? "analisis lainnya"
-              : "mulai analisis"}
+              ? "Analisis CCTV Lainnya"
+              : "Analisis CCTV Toko Anda"}
           </button>
           <button
             className="inline-flex items-center px-4 py-2 rounded-xl bg-white text-gray-900 font-semibold shadow-md"
@@ -547,7 +569,7 @@ function App() {
               boxShadow: "0 8px 20px 0 rgba(10,25,58,0.32)",
             }}
           >
-            lihat fitur
+            Lihat Demo
           </button>
         </div>
       </div>
@@ -1053,6 +1075,9 @@ function App() {
                 <p className="text-blue-200 text-sm">Per customer</p>
               </div>
             </div>
+
+            {/* Top Actions (before Journey) */}
+            <TopActions analysisData={analysisResult} />
 
             {/* Visualizations Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
