@@ -13,7 +13,7 @@ import axios from "axios";
 // API Configuration
 const FASTAPI_URL =
   import.meta.env.VITE_FASTAPI_URL || "https://api.tracko.tech";
-  // import.meta.env.VITE_FASTAPI_URL || "https://c909f3baf58e.ngrok-free.app";
+// import.meta.env.VITE_FASTAPI_URL || "https://c909f3baf58e.ngrok-free.app";
 
 // Define the structure for the journey analysis data from the backend
 interface JourneyOutcome {
@@ -779,18 +779,25 @@ function App() {
                 analysisResult.download_links?.annotated_video_download) && (
                 <div
                   className="bg-white rounded-3xl shadow-sm p-8"
-                  style={{ border: "1px solid #e6dfd2", background: "rgba(255,255,255,0.88)" }}
+                  style={{
+                    border: "1px solid #e6dfd2",
+                    background: "rgba(255,255,255,0.88)",
+                  }}
                 >
                   <div className="flex items-center mb-6">
                     <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                    <h3 className="text-xl font-semibold text-gray-900">Annotated Video</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Annotated Video
+                    </h3>
                   </div>
                   {(() => {
                     const links = analysisResult.download_links || {};
                     const url = links.annotated_video_stream
                       ? `${FASTAPI_URL}${links.annotated_video_stream}`
                       : links.annotated_video_blob_path
-                      ? `${FASTAPI_URL}/stream?blob=${encodeURIComponent(links.annotated_video_blob_path)}`
+                      ? `${FASTAPI_URL}/stream?blob=${encodeURIComponent(
+                          links.annotated_video_blob_path
+                        )}`
                       : undefined;
                     return (
                       <AnnotatedVideo
@@ -807,11 +814,16 @@ function App() {
               {analysisResult.download_links?.shelf_map_image && (
                 <div
                   className="bg-white rounded-3xl shadow-sm p-8"
-                  style={{ border: "1px solid #e6dfd2", background: "rgba(255,255,255,0.88)" }}
+                  style={{
+                    border: "1px solid #e6dfd2",
+                    background: "rgba(255,255,255,0.88)",
+                  }}
                 >
                   <div className="flex items-center mb-6">
                     <div className="w-3 h-3 bg-amber-500 rounded-full mr-3"></div>
-                    <h3 className="text-xl font-semibold text-gray-900">Shelf Map</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Shelf Map
+                    </h3>
                   </div>
                   <img
                     src={analysisResult.download_links.shelf_map_image}
@@ -886,12 +898,15 @@ function App() {
                     Dwell Time per Area
                   </h3>
                 </div>
-                <DwellTimeChart 
-                  data={generateDwellTimeData(analysisResult)} 
+                <DwellTimeChart
+                  data={generateDwellTimeData(analysisResult)}
                   altData={(() => {
-                    const load = (analysisResult as any).shelf_dwell_load_seconds || {};
-                    const asArr = Object.entries(load).map(([shelf, seconds]) => ({ shelf, time: seconds as number }));
-                    return asArr.sort((a,b)=>b.time-a.time);
+                    const load =
+                      (analysisResult as any).shelf_dwell_load_seconds || {};
+                    const asArr = Object.entries(load).map(
+                      ([shelf, seconds]) => ({ shelf, time: seconds as number })
+                    );
+                    return asArr.sort((a, b) => b.time - a.time);
                   })()}
                 />
               </div>
