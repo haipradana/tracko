@@ -13,6 +13,7 @@ import axios from "axios";
 // API Configuration
 const FASTAPI_URL =
   import.meta.env.VITE_FASTAPI_URL || "https://api.tracko.tech";
+  // import.meta.env.VITE_FASTAPI_URL || "https://c909f3baf58e.ngrok-free.app";
 
 // Define the structure for the journey analysis data from the backend
 interface JourneyOutcome {
