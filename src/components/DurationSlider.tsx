@@ -24,12 +24,16 @@ const DurationSlider: React.FC<DurationSliderProps> = ({ value, onChange, fileSi
           className="flex-1 h-3 rounded-full appearance-none cursor-pointer"
           style={{ background:'#e7dfd2' }}
         />
-        <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background:'linear-gradient(135deg,#1f49a6,#0a193a)', color:'#fff' }}>
-          <Clock className="h-4 w-4" />
-          <b>{value}</b>
-          <span className="opacity-80">detik</span>
-        </span>
-      </div>
+          <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white text-gray-900 font-semibold shadow-md"
+            style={{
+              border: '1px solid #e6dfd2',
+              boxShadow: '0 1px 10px 0 rgba(10,25,58,0.32)',
+            }}>
+            <Clock className="h-4 w-4" />
+            <b>{value}</b>
+            <span className="opacity-80">detik</span>
+          </span>
+        </div>
       {fileSize && (
         <div className="text-sm text-gray-600">
           File Size: {fileSizeMB} MB · {isLargeFile ? 'Estimasi 5-10 menit' : 'Estimasi 2-5 menit'}

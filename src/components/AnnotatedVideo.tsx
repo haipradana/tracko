@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Play, AlertCircle, CheckCircle } from 'lucide-react';
+import { Download, AlertCircle } from 'lucide-react';
 
 interface AnnotatedVideoProps {
   videoUrl?: string;
@@ -26,28 +26,33 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
 
   if (!videoUrl) {
     return (
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 text-center">
-        <AlertCircle className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-blue-600 mb-2">Video Sedang Diproses</h3>
-        <p className="text-blue-500">
-          Video beranotasi sedang dibuat. Coba refresh setelah beberapa saat.
-        </p>
+      <div
+        className="rounded-2xl p-6 text-center"
+        style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.60)' }}
+      >
+        <AlertCircle className="h-10 w-10 text-blue-700 mx-auto mb-3" />
+        <h3 className="text-base font-semibold text-gray-900 mb-1">Video Sedang Diproses</h3>
+        <p className="text-gray-700">Video beranotasi sedang dibuat. Coba refresh setelah beberapa saat.</p>
       </div>
     );
   }
 
   if (videoError) {
     return (
-      <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-8 text-center">
-        <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-red-600 mb-2">Error Loading Video</h3>
-        <p className="text-red-500 mb-4">Failed to load annotated video</p>
+      <div
+        className="rounded-2xl p-6 text-center"
+        style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.60)' }}
+      >
+        <AlertCircle className="h-10 w-10 text-red-600 mx-auto mb-3" />
+        <h3 className="text-base font-semibold text-gray-900 mb-1">Gagal Memuat Video</h3>
+        <p className="text-gray-700 mb-4">Terjadi kesalahan saat memuat video beranotasi</p>
         <button
           onClick={handleDownload}
-          className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          className="inline-flex items-center px-4 py-2 rounded-xl text-white"
+          style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}
         >
           <Download className="h-4 w-4 mr-2" />
-          Try Download
+          Coba Download
         </button>
       </div>
     );
@@ -68,19 +73,26 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
       </div>
       */}
 
-      <div className="relative bg-gray-900 rounded-2xl overflow-hidden">
+      <div
+        className="relative rounded-2xl overflow-hidden"
+        style={{ borderRadius: 14, padding: '1px', background: 'rgba(255,255,255,.60)' }}
+      >
         {!videoLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-            <div className="text-center text-white">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent mx-auto mb-2"></div>
-              <p className="text-sm">Loading video...</p>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.75)' }}>
+            <div className="text-center">
+              <div
+                className="animate-spin rounded-full h-8 w-8 mx-auto mb-1 flex items-center justify-center bg-white shadow-md"
+                style={{ border: '2px solid #1f49a6', borderTop: '2px solid transparent' }}
+              ></div>
+              <p className="text-sm text-gray-800">Loading video...</p>
             </div>
           </div>
         )}
-        
+
         <video
           controls
-          className="w-full h-auto"
+          className="w-full h-auto rounded-xl"
+          style={{ border: '1px solid #e6dfd2', background: '#000' }}
           onError={() => setVideoError(true)}
           onLoadedData={() => setVideoLoaded(true)}
           preload="metadata"
@@ -89,19 +101,13 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
           <source src={videoUrl} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
-        
-        {videoLoaded && (
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-75 text-white px-3 py-1 rounded-lg text-sm">
-            <Play className="h-4 w-4 inline mr-1" />
-            Analysis ID: {analysisId || 'Unknown'}
-          </div>
-        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 justify-center">
         <button
           onClick={handleDownload}
-          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl hover:from-blue-700 hover:to-blue-900 transition-colors"
+          className="inline-flex items-center px-4 py-2 rounded-xl text-white"
+          style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)', boxShadow: '0 9px 15px 0 rgba(10,25,58,0.20)' }}
         >
           <Download className="h-4 w-4 mr-2" />
           Download
@@ -111,7 +117,8 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
             href={originalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center px-4 py-2 rounded-xl text-gray-900 font-semibold"
+            style={{ background: '#fff', border: '1px solid #e6dfd2', boxShadow: '0 8px 20px 0 rgba(10,25,58,0.12)' }}
           >
             View Original Video
           </a>

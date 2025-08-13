@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import FileUpload from "./components/FileUpload";
 import DurationSlider from "./components/DurationSlider";
 import Heatmap from "./components/Heatmap";
@@ -7,7 +7,7 @@ import CustomerJourney from "./components/CustomerJourney";
 import BehaviorArchetypes from "./components/BehaviorArchetypes";
 import InsightRecommendations from "./components/InsightRecommendations";
 import AnnotatedVideo from "./components/AnnotatedVideo";
-import { AlertCircle, Sparkles, Users } from "lucide-react";
+import { AlertCircle, Sparkles } from "lucide-react";
 import axios from "axios";
 
 // API Configuration
@@ -66,6 +66,7 @@ interface AnalysisResult {
     annotated_video_download?: string;
     heatmap_image?: string;
     shelf_map_image?: string;
+    shelf_map_images?: string[];
     csv_report?: string;
     json_results?: string;
   };
@@ -92,6 +93,32 @@ function App() {
   const [progress, setProgress] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [shelfMapIndex, setShelfMapIndex] = useState<number>(0);
+
+  const uploadSectionRef = useRef<HTMLDivElement | null>(null);
+
+  const handleDownload = () => {
+    if (currentStep === AnalysisStep.COMPLETED) {
+      // Reset back to start for new analysis
+      resetAnalysis();
+      setTimeout(() => {
+        uploadSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 50);
+      return;
+    }
+    // Scroll to upload area and trigger file picker
+    uploadSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    const input = document.getElementById(
+      "file-upload"
+    ) as HTMLInputElement | null;
+    if (input) input.click();
+  };
 
   const handleAnalyze = async () => {
     if (!uploadedFile) return;
@@ -443,7 +470,7 @@ function App() {
               borderRadius: "50%",
             }}
           />{" "}
-          Tracko — Light + glass, warm beige, blue‑black accents
+          Tracko — Track Your Store
         </span>
         <h1
           style={{
@@ -454,17 +481,23 @@ function App() {
             color: "#0b1220",
           }}
         >
-          Upload video pelanggan, dapatkan{" "}
-          <span
-            style={{
-              background: "linear-gradient(90deg,#1f49a6,#0a193a)",
-              WebkitBackgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            insight AI
-          </span>{" "}
-          untuk optimasi toko
+          {currentStep === AnalysisStep.COMPLETED ? (
+            <>Hasil analisis video CCTV Anda</>
+          ) : (
+            <>
+              Upload video pelanggan, dapatkan{" "}
+              <span
+                style={{
+                  background: "linear-gradient(90deg,#1f49a6,#0a193a)",
+                  WebkitBackgroundClip: "text",
+                  color: "transparent",
+                }}
+              >
+                insight AI
+              </span>{" "}
+              untuk optimasi toko
+            </>
+          )}
         </h1>
         <p
           style={{
@@ -474,10 +507,50 @@ function App() {
             fontSize: 17,
           }}
         >
-          UI minimalis dan hangat. Aksen gradasi biru gelap — elegan di atas
-          background beige.
+          {currentStep === AnalysisStep.COMPLETED ? (
+            <>
+              Analisis selesai untuk video CCTV toko Anda, insight AI siap
+              membantu optimasi toko.
+            </>
+          ) : (
+            <>
+              Insight cerdas dari CCTV toko Anda, untuk membantu keputusan
+              bisnis lebih cepat dan akurat.
+            </>
+          )}
         </p>
       </header>
+
+      {/* CTA under hero */}
+      <div
+        className="hero-inner"
+        style={{ textAlign: "left", marginBottom: 4 }}
+      >
+        <div className="flex gap-3">
+          <button
+            onClick={handleDownload}
+            className="inline-flex items-center px-4 py-2 rounded-xl text-white"
+            style={{
+              background: "linear-gradient(135deg,#1f49a6,#0a193a)",
+              boxShadow: "0 9px 15px 0 rgba(10,25,58,0.32)",
+            }}
+          >
+            {/* <Download className="h-4 w-4 mr-2" /> */}
+            {currentStep === AnalysisStep.COMPLETED
+              ? "analisis lainnya"
+              : "mulai analisis"}
+          </button>
+          <button
+            className="inline-flex items-center px-4 py-2 rounded-xl bg-white text-gray-900 font-semibold shadow-md"
+            style={{
+              border: "1px solid #e6dfd2",
+              boxShadow: "0 8px 20px 0 rgba(10,25,58,0.32)",
+            }}
+          >
+            lihat fitur
+          </button>
+        </div>
+      </div>
 
       <main
         className="max-w-7xl mx-auto px-6 py-12"
@@ -507,7 +580,7 @@ function App() {
         {/* Upload + Status Section (shown during upload and processing) */}
         {(currentStep === AnalysisStep.UPLOAD ||
           currentStep === AnalysisStep.PROCESSING) && (
-          <div className="space-y-8">
+          <div ref={uploadSectionRef} className="space-y-8">
             {/* Desktop Layout: Upload & Duration on left, Processing on right */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Upload + Max Duration (mengikuti referensi) */}
@@ -524,11 +597,10 @@ function App() {
                     marginTop: -12,
                     paddingBottom: 10,
                     borderBottom: "1px solid #e6dfd2",
+                    marginBottom: 12,
                   }}
                 >
-                  <h3 className="font-semibold text-gray-900">
-                    1 · Upload Video
-                  </h3>
+                  <h3 className="font-semibold text-gray-900">Upload Video</h3>
                   <span
                     className="inline-flex items-center gap-2 px-3 py-1 rounded-xl"
                     style={{
@@ -594,17 +666,24 @@ function App() {
                     className={`inline-flex items-center px-10 py-3 rounded-2xl font-semibold text-base transition-all duration-300 ${
                       !uploadedFile || isAnalyzing
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-blue-800 to-blue-950 hover:from-blue-900 hover:to-blue-[980] text-white shadow-lg hover:shadow-xl transform hover:scale-105"
-                    }`}
+                        : "bg-gradient-to-r from-blue-800 to-blue-950 text-white"
+                    } ${!uploadedFile || isAnalyzing ? "" : "hover:scale-105"}`}
                   >
                     {isAnalyzing ? (
                       <>
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mr-3"></div>
-                        <span>Menganalisis...</span>
+                        <div
+                          className="animate-spin rounded-full h-6 w-6 mr-3 flex items-center justify-center bg-white shadow-md"
+                          style={{
+                            border: "2px solid #1f49a6",
+                            borderTop: "2px solid transparent",
+                            boxShadow: "0 2px 8px 0 rgba(10,25,58,0.10)",
+                          }}
+                        ></div>
+                        <span className="text-gray-900">Menganalisis...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-6 w-6 mr-3" />
+                        <Sparkles className="h-5 w-5 mr-2" />
                         <span>Mulai Analisis</span>
                       </>
                     )}
@@ -626,10 +705,11 @@ function App() {
                     marginTop: -12,
                     paddingBottom: 10,
                     borderBottom: "1px solid #e6dfd2",
+                    marginBottom: 12,
                   }}
                 >
                   <h3 className="font-semibold text-gray-900">
-                    2 · Tahap Analisis
+                    Tahap Analisis
                   </h3>
                 </div>
                 <div className="grid gap-4 mt-4">
@@ -753,25 +833,6 @@ function App() {
         {/* Results Section */}
         {currentStep === AnalysisStep.COMPLETED && analysisResult && (
           <div className="space-y-8">
-            {/* Results Header */}
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl mb-4">
-                <Users className="h-8 w-8 text-white" />
-              </div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-2">
-                Hasil Analisis
-              </h2>
-              <p className="text-lg text-gray-600 mb-6">
-                Analisis selesai untuk video berdurasi {maxDuration} detik
-              </p>
-              <button
-                onClick={resetAnalysis}
-                className="inline-flex items-center px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition-colors"
-              >
-                Analisis Baru
-              </button>
-            </div>
-
             {/* Annotated Video + Shelf Map: stacked on mobile, side-by-side on desktop */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {(analysisResult.download_links?.annotated_video_stream ||
@@ -784,11 +845,40 @@ function App() {
                     background: "rgba(255,255,255,0.88)",
                   }}
                 >
-                  <div className="flex items-center mb-6">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      Annotated Video
-                    </h3>
+                  <div
+                    className="flex items-center justify-between"
+                    style={{
+                      marginTop: -12,
+                      paddingBottom: 10,
+                      borderBottom: "1px solid #e6dfd2",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div className="flex items-center">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Annotated Video
+                      </h3>
+                    </div>
+                    <span
+                      className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
+                      style={{
+                        background: "#f6f2eb",
+                        border: "1px solid #e6dfd2",
+                        color: "#2a3556",
+                        marginLeft: "auto",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 999,
+                          background: "#1f49a6",
+                          display: "inline-block",
+                        }}
+                      />
+                      Tracking + Behaviour
+                    </span>
                   </div>
                   {(() => {
                     const links = analysisResult.download_links || {};
@@ -811,7 +901,8 @@ function App() {
                 </div>
               )}
 
-              {analysisResult.download_links?.shelf_map_image && (
+              {(analysisResult.download_links?.shelf_map_images ||
+                analysisResult.download_links?.shelf_map_image) && (
                 <div
                   className="bg-white rounded-3xl shadow-sm p-8"
                   style={{
@@ -819,38 +910,139 @@ function App() {
                     background: "rgba(255,255,255,0.88)",
                   }}
                 >
-                  <div className="flex items-center mb-6">
-                    <div className="w-3 h-3 bg-amber-500 rounded-full mr-3"></div>
-                    <h3 className="text-xl font-semibold text-gray-900">
+                  <div
+                    className="flex items-center justify-between"
+                    style={{
+                      marginTop: -12,
+                      paddingBottom: 10,
+                      borderBottom: "1px solid #e6dfd2",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900">
                       Shelf Map
                     </h3>
+                    <span
+                      className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
+                      style={{
+                        background: "#f6f2eb",
+                        border: "1px solid #e6dfd2",
+                        color: "#2a3556",
+                        marginLeft: "auto",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 999,
+                          background: "#1f49a6",
+                          display: "inline-block",
+                        }}
+                      />
+                      Shelf Map
+                    </span>
                   </div>
-                  <img
-                    src={analysisResult.download_links.shelf_map_image}
-                    alt="Shelf Map"
-                    className="w-full rounded-xl border border-gray-200"
-                  />
+                  {(() => {
+                    const imgs =
+                      analysisResult.download_links?.shelf_map_images ||
+                      [analysisResult.download_links?.shelf_map_image].filter(
+                        Boolean
+                      );
+                    const safeImgs = imgs.filter(Boolean) as string[];
+                    return (
+                      <div>
+                        {/* Current image */}
+                        {safeImgs.length > 0 && (
+                          <img
+                            src={
+                              safeImgs[
+                                Math.min(shelfMapIndex, safeImgs.length - 1)
+                              ]
+                            }
+                            alt={`Shelf Map ${
+                              Math.min(shelfMapIndex, safeImgs.length - 1) + 1
+                            }`}
+                            className="w-full h-full object-contain rounded-xl"
+                            style={{ display: "block", background: "#f8f7f4" }}
+                          />
+                        )}
+                        {/* Actions */}
+                        <div className="mt-6 flex gap-3 justify-center">
+                          {safeImgs.length > 0 && (
+                            <a
+                              href={
+                                safeImgs[
+                                  Math.min(shelfMapIndex, safeImgs.length - 1)
+                                ]
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-4 py-2 rounded-xl text-white"
+                              style={{
+                                background:
+                                  "linear-gradient(135deg,#1f49a6,#0a193a)",
+                              }}
+                            >
+                              Download
+                            </a>
+                          )}
+                          {safeImgs.length > 1 && (
+                            <button
+                              onClick={() =>
+                                setShelfMapIndex(
+                                  (prev) => (prev + 1) % safeImgs.length
+                                )
+                              }
+                              className="inline-flex items-center px-4 py-2 rounded-xl text-gray-900 font-semibold"
+                              style={{
+                                background: "#fff",
+                                border: "1px solid #e6dfd2",
+                              }}
+                            >
+                              Other
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
 
             {/* Statistics Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-blue-950 to-blue-800 rounded-2xl p-6 text-white">
+              <div
+                className="rounded-2xl p-6 text-white"
+                style={{
+                  background: "linear-gradient(135deg,#1f49a6,#0a193a)",
+                }}
+              >
                 <h4 className="text-lg font-semibold mb-2">Unique Persons</h4>
                 <p className="text-3xl font-bold">
                   {analysisResult.unique_persons}
                 </p>
                 <p className="text-blue-200 text-sm">Detected in video</p>
               </div>
-              <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl p-6 text-white">
+              <div
+                className="rounded-2xl p-6 text-white"
+                style={{
+                  background: "linear-gradient(135deg,#1f49a6,#0a193a)",
+                }}
+              >
                 <h4 className="text-lg font-semibold mb-2">Detected Actions</h4>
                 <p className="text-3xl font-bold">
                   {analysisResult.total_interactions}
                 </p>
                 <p className="text-blue-200 text-sm">Customer actions</p>
               </div>
-              <div className="bg-gradient-to-br from-blue-800 to-blue-600 rounded-2xl p-6 text-white">
+              <div
+                className="rounded-2xl p-6 text-white"
+                style={{
+                  background: "linear-gradient(135deg,#1f49a6,#0a193a)",
+                }}
+              >
                 <h4 className="text-lg font-semibold mb-2">Avg Dwell Time</h4>
                 <p className="text-3xl font-bold">
                   {analysisResult.dwell_time_analysis?.average_dwell_time?.toFixed(
@@ -872,11 +1064,38 @@ function App() {
                   background: "rgba(255,255,255,0.88)",
                 }}
               >
-                <div className="flex items-center mb-6">
-                  <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                <div
+                  className="flex items-center justify-between"
+                  style={{
+                    marginTop: -12,
+                    paddingBottom: 10,
+                    borderBottom: "1px solid #e6dfd2",
+                    marginBottom: 12,
+                  }}
+                >
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Customer Traffic Heatmap
                   </h3>
+                  <span
+                    className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
+                    style={{
+                      background: "#f6f2eb",
+                      border: "1px solid #e6dfd2",
+                      color: "#2a3556",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: "#1f49a6",
+                        display: "inline-block",
+                      }}
+                    />
+                    Traffic Heatmap
+                  </span>
                 </div>
                 <Heatmap
                   data={analysisResult.heatmap_data}
@@ -892,11 +1111,38 @@ function App() {
                   background: "rgba(255,255,255,0.88)",
                 }}
               >
-                <div className="flex items-center mb-6">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                <div
+                  className="flex items-center justify-between"
+                  style={{
+                    marginTop: -12,
+                    paddingBottom: 10,
+                    borderBottom: "1px solid #e6dfd2",
+                    marginBottom: 12,
+                  }}
+                >
+                  <h3 className="text-lg font-semibold text-gray-900">
                     Dwell Time per Area
                   </h3>
+                  <span
+                    className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
+                    style={{
+                      background: "#f6f2eb",
+                      border: "1px solid #e6dfd2",
+                      color: "#2a3556",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: "#1f49a6",
+                        display: "inline-block",
+                      }}
+                    />
+                    Dwell Time
+                  </span>
                 </div>
                 <DwellTimeChart
                   data={generateDwellTimeData(analysisResult)}
@@ -933,22 +1179,76 @@ function App() {
                 background: "rgba(255,255,255,0.88)",
               }}
             >
-              <div className="flex items-center mb-6">
-                <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                <h3 className="text-xl font-semibold text-gray-900">
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  marginTop: -12,
+                  paddingBottom: 10,
+                  borderBottom: "1px solid #e6dfd2",
+                  marginBottom: 12,
+                }}
+              >
+                <h3 className="text-lg font-semibold text-gray-900">
                   Behavioral Archetypes
                 </h3>
+                <span
+                  className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
+                  style={{
+                    background: "#f6f2eb",
+                    border: "1px solid #e6dfd2",
+                    color: "#2a3556",
+                    marginLeft: "auto",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: "#1f49a6",
+                      display: "inline-block",
+                    }}
+                  />
+                  Archetypes
+                </span>
               </div>
               <BehaviorArchetypes analysisData={analysisResult} />
             </div>
 
             {/* AI Insights */}
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-8 text-white">
-              <div className="flex items-center mb-6">
-                <div className="w-3 h-3 bg-yellow-400 rounded-full mr-3"></div>
-                <h3 className="text-xl font-semibold">
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  marginTop: -12,
+                  paddingBottom: 10,
+                  borderBottom: "1px solid rgba(255,255,255,0.18)",
+                  marginBottom: 12,
+                }}
+              >
+                <h3 className="text-lg font-semibold">
                   AI Insights & Rekomendasi
                 </h3>
+                <span
+                  className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
+                  style={{
+                    background: "rgba(255,255,255,0.12)",
+                    border: "1px solid rgba(255,255,255,0.20)",
+                    color: "#fff",
+                    marginLeft: "auto",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: "#facc15",
+                      display: "inline-block",
+                    }}
+                  />
+                  AI Insights
+                </span>
               </div>
               <InsightRecommendations analysisData={analysisResult} />
             </div>
