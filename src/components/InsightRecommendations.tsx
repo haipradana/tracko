@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, Target, TrendingUp, AlertTriangle, Sparkles, Wand2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface AnalysisData {
   unique_persons: number;
@@ -342,8 +344,22 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
               </div>
             )}
             {promptAnswer && (
-              <div className="border border-white/10 rounded-xl p-4 bg-white/5 whitespace-pre-wrap text-sm opacity-90">
-                {promptAnswer}
+              <div className="border border-white/10 rounded-xl p-4 bg-white/5 text-sm opacity-90 prose prose-invert max-w-none
+                              prose-ul:pl-6 prose-ol:pl-6 prose-li:my-0.5 prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: (p) => <h3 className="!mt-3 !mb-1" {...p} />,
+                    h2: (p) => <h4 className="!mt-3 !mb-1" {...p} />,
+                    h3: (p) => <h5 className="!mt-3 !mb-1" {...p} />,
+                    ul: (p) => <ul className="!pl-6 list-disc" {...p} />,
+                    ol: (p) => <ol className="!pl-6 list-decimal" {...p} />,
+                    li: (p) => <li className="!my-0.5" {...p} />,
+                    p:  (p) => <p className="!my-1" {...p} />,
+                  }}
+                >
+                  {promptAnswer}
+                </ReactMarkdown>
               </div>
             )}
           </div>
