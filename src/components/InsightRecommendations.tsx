@@ -128,7 +128,7 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
 
   // ---------- PROMPT INSIGHTS (Azure OpenAI — optional direct call) ----------
   const [prompt, setPrompt] = useState<string>(
-    'Sebagai analis retail, berikan rekomendasi singkat berdasarkan metrik: gunakan bullet & prioritas.'
+    'Bagaimana heatmap pengunjung membantu optimasi toko saya?'
   );
   const [promptLoading, setPromptLoading] = useState(false);
   const [promptError, setPromptError] = useState<string>("");
