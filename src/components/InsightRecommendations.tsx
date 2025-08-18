@@ -88,6 +88,8 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
     setLlmError("");
     try {
       const heatmapUrl = (analysisData as any)?.download_links?.heatmap_image as string | undefined;
+      const shelfmapUrl = ((analysisData as any)?.download_links?.shelf_map_image as string | undefined)
+        || (((analysisData as any)?.download_links?.shelf_map_images || [])[0] as string | undefined);
       const payload = {
         prompt: 'Hasilkan insight retail TERSTRUKTUR (items: analysis, pattern, opportunity, warning) dan summary) dari data berikut.',
         data: {
@@ -100,6 +102,7 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
           journey_analysis: (analysisData as any)?.journey_analysis,
         },
         heatmap_url: heatmapUrl,
+        shelfmap_url: shelfmapUrl,
       };
       const resp = await fetch(`${apiBase}/ai/insights`, {
         method: 'POST',
@@ -139,6 +142,8 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
       setPromptOutput("");
       // Fallback ke origin jika env tidak ada (reverse proxy same-origin)
       const heatmapUrl = (analysisData as any)?.download_links?.heatmap_image as string | undefined;
+      const shelfmapUrl = ((analysisData as any)?.download_links?.shelf_map_image as string | undefined)
+        || (((analysisData as any)?.download_links?.shelf_map_images || [])[0] as string | undefined);
       const payload = {
         prompt,
         data: {
@@ -151,6 +156,7 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
           journey_analysis: (analysisData as any)?.journey_analysis,
         },
         heatmap_url: heatmapUrl,
+        shelfmap_url: shelfmapUrl,
       };
       let resp = await fetch(`${apiBase}/ai/qa/stream`, {
         method: 'POST',
@@ -320,13 +326,13 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
           <h4 className="font-semibold text-xl mb-4 flex items-center gap-2">
             <Wand2 className="h-5 w-5"/>
-            Insight by Prompt (Azure OpenAI)
+            Tanya AI
           </h4>
           <div className="space-y-3">
             <textarea className="w-full min-h-[120px] p-3 rounded-lg bg-white/5 border border-white/10" value={prompt} onChange={(e)=>setPrompt(e.target.value)} />
             <div className="flex gap-3 items-center">
               <button className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10" onClick={handlePromptInsights} disabled={promptLoading}>
-                {promptLoading ? 'Menghasilkan…' : 'Generate Insight'}
+                {promptLoading ? 'Mohon tunggu…' : 'Tanya!'}
               </button>
               {promptError && <span className="text-red-400 text-sm">{promptError}</span>}
             </div>
