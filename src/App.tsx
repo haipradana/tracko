@@ -8,13 +8,69 @@ import BehaviorArchetypes from "./components/BehaviorArchetypes";
 import InsightRecommendations from "./components/InsightRecommendations";
 import AnnotatedVideo from "./components/AnnotatedVideo";
 import TopActions from "./components/TopActions";
-import { AlertCircle, Sparkles } from "lucide-react";
+import { AlertCircle, Sparkles, Settings } from "lucide-react";
 import axios from "axios";
 
 // API Configuration
 const FASTAPI_URL =
   import.meta.env.VITE_FASTAPI_URL || "https://api.tracko.tech";
 // import.meta.env.VITE_FASTAPI_URL || "https://c909f3baf58e.ngrok-free.app";
+
+// --- FrameSkipSlider Component (similar to DurationSlider) ---
+const FrameSkipSlider = ({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) => {
+  const options = [
+    { value: 0.5, label: "High Accuracy (Slowest)" },
+    { value: 1, label: "Balanced (Default)" },
+    { value: 2, label: "Fast (Recommended)" },
+    { value: 4, label: "Fastest (Lower Accuracy)" },
+  ];
+
+  const currentIndex = options.findIndex((opt) => opt.value === value);
+
+  return (
+    <div className="space-y-3">
+      <input
+        type="range"
+        min={0}
+        max={options.length - 1}
+        value={currentIndex}
+        onChange={(e) => onChange(options[Number(e.target.value)].value)}
+        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        style={{
+          background: `linear-gradient(to right, #1f49a6 0%, #1f49a6 ${
+            (currentIndex / (options.length - 1)) * 100
+          }%, #e5e7eb ${(currentIndex / (options.length - 1)) * 100}%, #e5e7eb 100%)`,
+        }}
+      />
+      <div className="flex justify-between text-xs text-gray-600">
+        {options.map((opt) => (
+          <span
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={`cursor-pointer ${
+              value === opt.value ? "font-bold text-blue-800" : ""
+            }`}
+          >
+            {opt.label.split(" ")[0]}
+          </span>
+        ))}
+      </div>
+      <div className="text-center font-medium text-gray-800">
+        Processing Mode:{" "}
+        <span className="font-bold text-blue-800">
+          {options[currentIndex].label}
+        </span>
+      </div>
+    </div>
+  );
+};
+// --- End FrameSkipSlider ---
 
 // Define the structure for the journey analysis data from the backend
 interface JourneyOutcome {
@@ -84,6 +140,19 @@ function App() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [originalVideoUrl, setOriginalVideoUrl] = useState<string | null>(null);
   const [maxDuration, setMaxDuration] = useState(30);
+  const [frameSkip, setFrameSkip] = useState(1.0); // State for new slider
+  const [showSettings, setShowSettings] = useState(false);
+  type SpeedMode = "high" | "balanced" | "fast";
+  const modeFromValue = (v: number): SpeedMode => (v <= 0.75 ? "high" : v <= 1.5 ? "balanced" : "fast");
+  const [speedMode, setSpeedMode] = useState<SpeedMode>(modeFromValue(frameSkip));
+  const applyMode = (m: SpeedMode) => {
+    setSpeedMode(m);
+    const mapping: Record<SpeedMode, number> = { high: 0.5, balanced: 1.0, fast: 2.0 };
+    setFrameSkip(mapping[m]);
+  };
+  useEffect(() => {
+    setSpeedMode(modeFromValue(frameSkip));
+  }, [frameSkip]);
   const [currentStep, setCurrentStep] = useState<AnalysisStep>(
     AnalysisStep.UPLOAD
   );
@@ -141,12 +210,14 @@ function App() {
     const formData = new FormData();
     formData.append("video", uploadedFile);
     formData.append("max_duration", maxDuration.toString());
+    formData.append("frame_skip_multiplier", frameSkip.toString()); // Add this
     formData.append("save_to_blob", "true");
     formData.append("generate_video", "true");
 
     console.log("📋 Form data prepared:", {
       filename: uploadedFile.name,
       maxDuration,
+      frameSkip, // Log this
       fileSize: uploadedFile.size,
     });
 
@@ -652,23 +723,56 @@ function App() {
                       borderRadius: 14,
                       padding: "18px 16px",
                       background: "rgba(255,255,255,.60)",
+                      position: "relative",
                     }}
                   >
+                    {/* Settings (gear) button */}
+                    <button
+                      onClick={() => setShowSettings(true)}
+                      title="Pengaturan Lanjutan"
+                      className="absolute right-5 top-5 inline-flex items-center justify-center w-10 h-10 rounded-lg text-gray-700 bg-white border"
+                      style={{ borderColor: "#e6dfd2" }}
+                    >
+                      <Settings className="w-5 h-5" />
+                    </button>
                     <div className="grid gap-5">
                       <FileUpload
                         onFileUpload={setUploadedFile}
                         uploadedFile={uploadedFile}
                         compact
                       />
+                      {/* Mode Cepat radios, bound to frameSkip */}
                       <div>
-                        <div className="text-sm text-gray-700 mb-2 font-medium">
-                          Max Duration
+                        <div className="text-sm text-gray-700 mb-2 font-medium">Mode Cepat</div>
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="speed-mode"
+                              checked={speedMode === "balanced"}
+                              onChange={() => applyMode("balanced")}
+                            />
+                            <span>Balanced (Default)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="speed-mode"
+                              checked={speedMode === "fast"}
+                              onChange={() => applyMode("fast")}
+                            />
+                            <span>Fast</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="speed-mode"
+                              checked={speedMode === "high"}
+                              onChange={() => applyMode("high")}
+                            />
+                            <span>High Quality</span>
+                          </label>
                         </div>
-                        <DurationSlider
-                          value={maxDuration}
-                          onChange={setMaxDuration}
-                          fileSize={uploadedFile?.size}
-                        />
                       </div>
                     </div>
                   </div>
@@ -1276,6 +1380,49 @@ function App() {
                 </span>
               </div>
               <InsightRecommendations analysisData={analysisResult} />
+            </div>
+          </div>
+        )}
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.35)" }}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6"
+              style={{ border: "1px solid #e6dfd2", background: "#fff" }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Pengaturan Lanjutan</h3>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="grid gap-6">
+                <div>
+                  <div className="text-sm text-gray-700 mb-2 font-medium">Max Duration</div>
+                  <DurationSlider value={maxDuration} onChange={setMaxDuration} fileSize={uploadedFile?.size} />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-700 mb-2 font-medium">Processing Speed</div>
+                  <FrameSkipSlider value={frameSkip} onChange={setFrameSkip} />
+                  <div className="mt-2 text-xs text-gray-500">Terkait dengan Mode Cepat: {speedMode === "high" ? "High Quality" : speedMode === "fast" ? "Fast" : "Balanced (Default)"}</div>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="px-4 py-2 rounded-xl bg-white text-gray-900"
+                  style={{ border: "1px solid #e6dfd2" }}
+                >
+                  Simpan
+                </button>
+              </div>
             </div>
           </div>
         )}
