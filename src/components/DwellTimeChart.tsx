@@ -1,106 +1,128 @@
-import React from 'react';
-
-interface DwellTimeData {
-  shelf: string;
-  time: number;
-}
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, Clock, Users, BarChart } from 'lucide-react';
 
 interface DwellTimeChartProps {
-  data?: DwellTimeData[];
-  altData?: DwellTimeData[]; // cumulative (person-seconds)
-  title?: string;
+  data: { shelf: string; time: number }[];
+  altData: { shelf: string; time: number }[];
 }
 
-const DwellTimeChart: React.FC<DwellTimeChartProps> = ({ 
-  data, 
-  altData,
-  title = "Dwell Time per Shelf (seconds)" 
-}) => {
-  const [mode, setMode] = React.useState<'unique'|'cumulative'>('unique');
-  // Default data if none provided - sorted by dwell time descending like in Gradio
-  const defaultData: DwellTimeData[] = [
-    { shelf: 'shelf_1', time: 1.60 },
-    { shelf: 'shelf_4', time: 0.98 },
-    { shelf: 'shelf_5', time: 0.86 },
-    { shelf: 'shelf_6', time: 0.36 },
-    { shelf: 'shelf_2', time: 0.08 },
-    { shelf: 'shelf_3', time: 0.08 },
-  ];
+const DwellTimeChart: React.FC<DwellTimeChartProps> = ({ data, altData }) => {
+  const [viewMode, setViewMode] = useState<'unique' | 'cumulative'>('unique');
+  const [insight, setInsight] = useState<string>('');
+  const [insightItems, setInsightItems] = useState<string[]>([]);
+  const [isLoadingInsight, setIsLoadingInsight] = useState<boolean>(true);
 
-  const dwellData = (mode === 'unique' ? data : altData) || data || defaultData;
+  const chartData = viewMode === 'unique' ? data : altData;
+
+  useEffect(() => {
+    const fetchInsight = async () => {
+      if (!chartData || chartData.length === 0) {
+        setInsight("Data dwell time tidak cukup untuk dianalisis.");
+        setInsightItems([]);
+        setIsLoadingInsight(false);
+        return;
+      }
+      setIsLoadingInsight(true);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_FASTAPI_URL}/ai/dwell-time-insight`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dwell_data: chartData }),
+        });
+        if (!response.ok) throw new Error("Gagal mengambil insight");
+        const result = await response.json();
+        setInsight(result.insight || '');
+        setInsightItems(Array.isArray(result.items) ? result.items : []);
+      } catch (error) {
+        console.error("Error fetching dwell time insight:", error);
+        setInsight("Rak paling populer menunjukkan minat pelanggan yang tinggi; pertimbangkan untuk menempatkan produk terkait di dekatnya."); // Fallback
+        setInsightItems([]);
+      } finally {
+        setIsLoadingInsight(false);
+      }
+    };
+    fetchInsight();
+  }, [chartData]); // Re-fetch when data or view mode changes
+
+  const maxTime = Math.max(...chartData.map(d => d.time), 0);
   
-  // Sort by dwell time descending and limit to top 6 shelves
-  const sortedData = [...dwellData].sort((a, b) => b.time - a.time).slice(0, 6);
-  
-  const maxTime = Math.max(...sortedData.map(d => d.time));
-  const avgTime = sortedData.reduce((sum, d) => sum + d.time, 0) / sortedData.length;
+  if (!chartData || chartData.length === 0) {
+    return (
+      <div className="text-center text-gray-500 py-10">
+        <p>No dwell time data available.</p>
+      </div>
+    );
+  }
+
+  // Fallback to splitting text if items not provided
+  const bulletItems = insightItems.length > 0 
+    ? insightItems 
+    : (insight ? insight.split('\n').filter(line => line.trim() !== '') : []);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-1">{title}</h3>
-          <p className="text-gray-600 text-sm">{mode === 'unique' ? 'Unique per frame (≤ durasi video)' : 'Cumulative person-seconds (bisa > durasi video)'} </p>
-        </div>
-        {altData && (
-          <div className="inline-flex bg-gray-100 rounded-xl p-1 border border-gray-200">
-            <button onClick={()=>setMode('unique')} className={`px-3 py-1 rounded-lg text-sm ${mode==='unique'?'bg-white shadow font-semibold':'text-gray-600'}`}>Unique</button>
-            <button onClick={()=>setMode('cumulative')} className={`px-3 py-1 rounded-lg text-sm ${mode==='cumulative'?'bg-white shadow font-semibold':'text-gray-600'}`}>Cumulative</button>
-          </div>
-        )}
+    <div className="space-y-6">
+       <div className="flex justify-center bg-gray-100 p-1 rounded-lg">
+        <button
+          onClick={() => setViewMode('unique')}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'unique' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600'}`}
+        >
+           <div className="flex items-center">
+            <Clock className="w-4 h-4 mr-2" />
+            Unique Visitors
+           </div>
+        </button>
+        <button
+          onClick={() => setViewMode('cumulative')}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'cumulative' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600'}`}
+        >
+          <div className="flex items-center">
+            <Users className="w-4 h-4 mr-2" />
+            Total Time
+           </div>
+        </button>
       </div>
+      <p className="text-center text-xs text-gray-500 -mt-3">
+        {viewMode === 'unique' 
+          ? 'Waktu per rak, dihitung per pengunjung unik.'
+          : 'Total waktu kumulatif semua pengunjung di setiap rak.'
+        }
+      </p>
 
-      {/* Horizontal Bar Chart */}
-      <div className="bg-gray-50 rounded-xl p-6 mb-6">
-        <div className="space-y-4">
-          {sortedData.map((item, index) => (
-            <div key={index} className="flex items-center space-x-4">
-              <div className="w-20 text-sm font-semibold text-gray-700">
-                {item.shelf}
-              </div>
-              <div className="flex-1 bg-gray-100 rounded-full h-10 relative overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-blue-950 to-blue-800 h-full rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-4 shadow-sm"
-                  style={{ 
-                    width: `${Math.max(15, (item.time / maxTime) * 100)}%`,
-                  }}
-                >
-                  <span className="text-white text-sm font-semibold">
-                    {item.time.toFixed(2)}s
-                  </span>
-                </div>
+      {/* Chart */}
+      <div className="space-y-3">
+        {chartData.map(({ shelf, time }) => (
+          <div key={shelf} className="grid grid-cols-[auto,1fr] items-center gap-4 text-sm">
+            <div className="text-gray-700 font-medium truncate text-left">{shelf.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+            <div className="flex-1 bg-gray-200 rounded h-6">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-blue-700 h-6 rounded flex items-center justify-end px-2"
+                style={{ width: `${maxTime > 0 ? (time / maxTime) * 100 : 0}%` }}
+              >
+                <span className="text-white font-semibold text-xs">{time.toFixed(1)}s</span>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
-      {/* Statistics */}
-      <div className="bg-gray-50 rounded-xl p-4 mb-4">
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span className="font-medium">0s</span>
-          <span className="font-semibold text-gray-900">Rata-rata Dwell Time: {avgTime.toFixed(2)}s</span>
-          <span className="font-medium">{maxTime.toFixed(2)}s</span>
-        </div>
-      </div>
-
-      {/* Insights */}
-      <div className="bg-gradient-to-r from-blue-100 to-blue-50 border border-blue-200 rounded-xl p-4">
-        <h4 className="font-semibold text-blue-900 mb-2 text-sm">Traffic Insights</h4>
-        <ul className="text-xs text-blue-800 space-y-1">
-          <li className="flex items-start">
-            <span className="text-blue-500 mr-1">•</span>
-            <span>{sortedData[0]?.shelf} memiliki {mode==='unique'?'dwell time':'dwell load'} tertinggi ({sortedData[0]?.time.toFixed(2)}s)</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-blue-500 mr-1">•</span>
-            <span>Top {sortedData.length} shelf dengan engagement tertinggi</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-blue-500 mr-1">•</span>
-            <span>Shelf dengan dwell time rendah perlu optimasi layout</span>
-          </li>
-        </ul>
+      {/* AI Insight Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-6 mt-6">
+        <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+          <TrendingUp className="h-5 w-5 mr-2" />
+          Insight Dwell Time
+        </h4>
+        {isLoadingInsight ? (
+          <span className="italic text-gray-500 text-sm">Menganalisis data dwell time...</span>
+        ) : (
+          <ul className="text-sm text-blue-800 space-y-2">
+            {bulletItems.map((line, idx) => (
+              <li key={idx} className="flex items-start">
+                <span className="text-blue-500 mr-2">•</span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

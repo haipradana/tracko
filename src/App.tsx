@@ -1364,6 +1364,8 @@ function App() {
                 <Heatmap
                   data={analysisResult.heatmap_data}
                   heatmapImageUrl={analysisResult.download_links?.heatmap_image}
+                  shelfMapImageUrl={analysisResult.download_links?.shelf_map_image}
+                  isFiltered={excludedIds.length > 0}
                 />
               </div>
 

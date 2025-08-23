@@ -15,7 +15,7 @@ interface TrackGalleryProps {
   title?: string;
 }
 
-const TrackGallery: React.FC<TrackGalleryProps> = ({ items, excludedIds, onToggleExclude, title = 'Track Gallery' }) => {
+const TrackGallery: React.FC<TrackGalleryProps> = ({ items, excludedIds, onToggleExclude, title = 'Pantau Pengunjungmu' }) => {
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => b.duration_s - a.duration_s);
   }, [items]);

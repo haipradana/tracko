@@ -1,19 +1,70 @@
-import React, { useState } from 'react';
-import { TrendingUp, BarChart3, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, BarChart3, Download, Image as ImageIcon, LayoutGrid } from 'lucide-react';
 
 interface HeatmapProps {
   data?: number[][];
   title?: string;
   heatmapImageUrl?: string;
+  shelfMapImageUrl?: string;
+  isFiltered?: boolean;
 }
 
 const Heatmap: React.FC<HeatmapProps> = ({ 
   data, 
   title = "Traffic Heatmap",
-  heatmapImageUrl 
+  heatmapImageUrl,
+  shelfMapImageUrl,
+  isFiltered
 }) => {
   const [imageError, setImageError] = useState(false);
   const [showDataView, setShowDataView] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const [errorLoadingImage, setErrorLoadingImage] = useState(false);
+  const [trafficFlowInsight, setTrafficFlowInsight] = useState<string>("");
+  const [isLoadingInsight, setIsLoadingInsight] = useState<boolean>(true);
+
+
+  useEffect(() => {
+    setErrorLoadingImage(false);
+  }, [heatmapImageUrl]);
+  
+  useEffect(() => {
+    const fetchInsight = async () => {
+        if (!data || data.length === 0) {
+            setTrafficFlowInsight("Data heatmap tidak cukup untuk analisis alur.");
+            setIsLoadingInsight(false);
+            return;
+        }
+
+        setIsLoadingInsight(true);
+        try {
+            const response = await fetch(`${import.meta.env.VITE_FASTAPI_URL}/ai/heatmap-insight`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    heatmap_data: data,
+                    heatmap_url: heatmapImageUrl,
+                    shelfmap_url: shelfMapImageUrl,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Gagal mendapatkan wawasan dari AI');
+            }
+
+            const responseData = await response.json();
+            setTrafficFlowInsight(responseData.insight);
+        } catch (error) {
+            console.error("Error fetching heatmap insight:", error);
+            setTrafficFlowInsight("Pola heatmap menunjukkan jalur utama pelanggan. Pertimbangkan untuk menempatkan produk margin tinggi di rute ini."); // Fallback
+        } finally {
+            setIsLoadingInsight(false);
+        }
+    };
+
+    fetchInsight();
+}, [data, heatmapImageUrl, shelfMapImageUrl]); // Rerun when data changes
+
 
   // Default heatmap data if none provided
   const defaultData = Array(20).fill(null).map(() => 
@@ -58,12 +109,25 @@ const Heatmap: React.FC<HeatmapProps> = ({
         <div className="flex items-center space-x-3">
           {heatmapImageUrl && (
             <>
-              <button
-                onClick={() => setShowDataView(!showDataView)}
-                className="text-sm text-blue-600 hover:text-blue-800 underline"
-              >
-                {showDataView ? 'Show Heatmap' : 'Show Data Grid'}
-              </button>
+              {!errorLoadingImage && (
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => setShowDataView(false)}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors flex items-center ${!showDataView ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600'}`}
+                  >
+                    <ImageIcon className="w-4 h-4 mr-1.5" />
+                    Heatmap
+                  </button>
+                  <button
+                    onClick={() => setShowDataView(true)}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors flex items-center ${showDataView ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600'}`}
+                  >
+                    <LayoutGrid className="w-4 h-4 mr-1.5" />
+                    Data Grid
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={handleDownloadImage}
                 className="inline-flex items-center px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -77,7 +141,7 @@ const Heatmap: React.FC<HeatmapProps> = ({
       </div>
 
       {/* Image View (preferred if available) */}
-      {heatmapImageUrl && !showDataView && !imageError && (
+      {heatmapImageUrl && !showDataView && !errorLoadingImage && (
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
           <div className="text-center">
             <img
@@ -100,10 +164,10 @@ const Heatmap: React.FC<HeatmapProps> = ({
       )}
 
       {/* Data Grid View (fallback or toggle) */}
-      {(showDataView || imageError || !heatmapImageUrl) && (
+      {(showDataView || errorLoadingImage || !heatmapImageUrl) && (
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
           <div className="text-center mb-4">
-            {imageError && (
+            {errorLoadingImage && (
               <p className="text-yellow-600 text-sm mb-2">
                 ⚠️ Could not load heatmap image, showing data grid instead
               </p>
@@ -149,20 +213,30 @@ const Heatmap: React.FC<HeatmapProps> = ({
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-6">
         <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
           <TrendingUp className="h-5 w-5 mr-2" />
-          Traffic Insights
+          Insight Heatmap
         </h4>
         <ul className="text-sm text-blue-800 space-y-2">
           <li className="flex items-start">
             <span className="text-blue-500 mr-2">•</span>
-            <span>Peak activity area has {maxValue} interactions</span>
+            <span>
+              <strong>Area Aktivitas Puncak:</strong> Titik tersibuk menyumbang sekitar <strong>{((maxValue / totalInteractions) * 100).toFixed(1)}%</strong> dari seluruh lalu lintas yang terdeteksi.
+            </span>
           </li>
           <li className="flex items-start">
             <span className="text-blue-500 mr-2">•</span>
-            <span>Total {totalInteractions} customer interactions detected</span>
+            <span>
+              <strong>Cakupan Toko:</strong> Pelanggan secara aktif bergerak melalui <strong>{((heatmapData.flat().filter(v => v > 0).length / heatmapData.flat().length) * 100).toFixed(0)}%</strong> dari zona yang dipantau.
+            </span>
           </li>
           <li className="flex items-start">
             <span className="text-blue-500 mr-2">•</span>
-            <span>Heatmap shows customer movement patterns across store areas</span>
+            <span>
+              <strong>Alur Lalu Lintas:</strong> {isLoadingInsight ? (
+                <span className="italic text-gray-500">Menganalisis...</span>
+              ) : (
+                trafficFlowInsight
+              )}
+            </span>
           </li>
         </ul>
       </div>
