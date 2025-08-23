@@ -8,6 +8,7 @@ import BehaviorArchetypes from "./components/BehaviorArchetypes";
 import InsightRecommendations from "./components/InsightRecommendations";
 import AnnotatedVideo from "./components/AnnotatedVideo";
 import TopActions from "./components/TopActions";
+import TrackGallery from "./components/TrackGallery";
 import { AlertCircle, Sparkles, Settings } from "lucide-react";
 import axios from "axios";
 
@@ -109,6 +110,15 @@ interface AnalysisResult {
     total_tracks: number;
     total_shelf_interactions: number;
   };
+  // New: server-provided processing + gallery for filtering
+  processing?: {
+    tracks: Record<string, Array<{ frame: number; bbox: number[]; pid: number }>>;
+    action_preds: Record<string, Array<{ start: number; end: number; pred: number; action_name?: string }>>;
+    shelf_boxes_per_frame: Record<string, Array<[string, number[]]>>;
+    fps: number;
+    frame_size?: [number, number] | null;
+  };
+  track_gallery?: Array<{ pid: number; frame: number; bbox: number[]; duration_s: number; thumbnail_url: string }>;
   metadata: {
     analysis_id: string;
     original_filename: string;
@@ -164,6 +174,8 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [shelfMapIndex, setShelfMapIndex] = useState<number>(0);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [excludedIds, setExcludedIds] = useState<Array<number>>([]);
 
   const uploadSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -338,9 +350,11 @@ function App() {
     setAnalysisResult(null);
     setUploadedFile(null);
     setOriginalVideoUrl(null);
+    setVideoDuration(null);
     setError("");
     setProgress(0);
     setIsAnalyzing(false);
+    setExcludedIds([]);
   };
 
   // Build local preview URL for the uploaded (original) video
@@ -348,7 +362,18 @@ function App() {
     if (uploadedFile) {
       const url = URL.createObjectURL(uploadedFile);
       setOriginalVideoUrl(url);
-      return () => URL.revokeObjectURL(url);
+
+      // Auto-detect video duration
+      const videoElement = document.createElement("video");
+      videoElement.src = url;
+      videoElement.onloadedmetadata = () => {
+        setVideoDuration(videoElement.duration);
+      };
+
+      return () => {
+        URL.revokeObjectURL(url);
+        setVideoDuration(null); // Clean up on file change
+      };
     }
     return;
   }, [uploadedFile]);
@@ -399,6 +424,55 @@ function App() {
     // Fallback to an empty array if the data isn't available for any reason
     console.warn("Journey analysis data not found in the backend response.");
     return [];
+  };
+
+  // --- Track Gallery handlers ---
+  const toggleExcludePid = async (pid: number) => {
+    if (!analysisResult) return;
+    const next = excludedIds.includes(pid)
+      ? excludedIds.filter((x) => x !== pid)
+      : [...excludedIds, pid];
+    setExcludedIds(next);
+    
+    // Call backend to recompute
+    try {
+      const payload = {
+        analysis_id: analysisResult.metadata?.analysis_id,
+        excluded_track_ids: next.map(id => String(id)), // Ensure IDs are strings
+        processing: analysisResult.processing,
+      };
+      
+      const resp = await axios.post(`${FASTAPI_URL}/apply-filters`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 120000,
+      });
+      
+      if (resp?.data) {
+        // Merge analytics into current result, but intelligently merge download_links
+        setAnalysisResult((prev) => {
+          if (!prev) return prev;
+          
+          // Deep merge download_links, otherwise the new response (with only heatmap_image) will overwrite other links
+          const newDownloadLinks = {
+            ...(prev.download_links || {}),
+            ...(resp.data.download_links || {})
+          };
+          
+          const merged: AnalysisResult = {
+            ...prev,
+            ...resp.data,
+            download_links: newDownloadLinks
+          };
+
+          return merged;
+        });
+      }
+    } catch (e: any) {
+      console.error('❌ Failed to apply filters:', e);
+      if (e.response) {
+        console.error('📥 Error response:', e.response.status, e.response.data);
+      }
+    }
   };
 
   return (
@@ -948,6 +1022,39 @@ function App() {
                     Durasi lebih panjang memberi analisis lebih komprehensif,
                     namun memerlukan waktu proses yang lebih lama.
                   </p>
+                  {/* --- Analysis Details --- */}
+                  {uploadedFile && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-700">
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        <dt className="font-medium text-gray-500">Nama file</dt>
+                        <dd className="truncate text-right">{uploadedFile.name}</dd>
+
+                        <dt className="font-medium text-gray-500">Durasi video</dt>
+                        <dd className="text-right">
+                          {videoDuration
+                            ? `${Math.floor(videoDuration / 60)}m ${Math.round(
+                                videoDuration % 60
+                              )}s`
+                            : "Mendeteksi..."}
+                        </dd>
+
+                        <dt className="font-medium text-gray-500">Ukuran file</dt>
+                        <dd className="text-right">
+                          {(uploadedFile.size / 1024 / 1024).toFixed(1)} MB
+                        </dd>
+
+                        <dt className="font-medium text-gray-500">Mode Cepat</dt>
+                        <dd className="text-right font-semibold">
+                          {speedMode === "high"
+                            ? "High Quality"
+                            : speedMode === "fast"
+                            ? "Fast"
+                            : "Balanced (Default)"}
+                        </dd>
+                      </dl>
+                    </div>
+                  )}
+                  {/* --- End Analysis Details --- */}
                 </div>
               </div>
             </div>
@@ -1130,6 +1237,8 @@ function App() {
                             </button>
                           )}
                         </div>
+
+                        {/* Track Gallery moved to its own full-width section below */}
                       </div>
                     );
                   })()}
@@ -1137,14 +1246,30 @@ function App() {
               )}
             </div>
 
+            {/* Full-width Track Gallery */}
+            {(analysisResult.track_gallery || []).length > 0 && (
+              <div className="bg-white rounded-3xl shadow-sm p-8" style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.88)' }}>
+                <TrackGallery
+                  items={analysisResult.track_gallery || []}
+                  excludedIds={excludedIds}
+                  onToggleExclude={toggleExcludePid}
+                />
+              </div>
+            )}
+
             {/* Statistics Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div
-                className="rounded-2xl p-6 text-white"
+                className="rounded-2xl p-6 text-white relative"
                 style={{
                   background: "linear-gradient(135deg,#1f49a6,#0a193a)",
                 }}
               >
+                {excludedIds.length > 0 && (
+                  <span className="absolute top-2 right-2 inline-flex items-center px-2 py-1 rounded text-xs bg-white/20 text-white">
+                    Filtered
+                  </span>
+                )}
                 <h4 className="text-lg font-semibold mb-2">Unique Persons</h4>
                 <p className="text-3xl font-bold">
                   {analysisResult.unique_persons}
@@ -1152,11 +1277,16 @@ function App() {
                 <p className="text-blue-200 text-sm">Detected in video</p>
               </div>
               <div
-                className="rounded-2xl p-6 text-white"
+                className="rounded-2xl p-6 text-white relative"
                 style={{
                   background: "linear-gradient(135deg,#1f49a6,#0a193a)",
                 }}
               >
+                {excludedIds.length > 0 && (
+                  <span className="absolute top-2 right-2 inline-flex items-center px-2 py-1 rounded text-xs bg-white/20 text-white">
+                    Filtered
+                  </span>
+                )}
                 <h4 className="text-lg font-semibold mb-2">Detected Actions</h4>
                 <p className="text-3xl font-bold">
                   {analysisResult.total_interactions}
@@ -1164,11 +1294,16 @@ function App() {
                 <p className="text-blue-200 text-sm">Customer actions</p>
               </div>
               <div
-                className="rounded-2xl p-6 text-white"
+                className="rounded-2xl p-6 text-white relative"
                 style={{
                   background: "linear-gradient(135deg,#1f49a6,#0a193a)",
                 }}
               >
+                {excludedIds.length > 0 && (
+                  <span className="absolute top-2 right-2 inline-flex items-center px-2 py-1 rounded text-xs bg-white/20 text-white">
+                    Filtered
+                  </span>
+                )}
                 <h4 className="text-lg font-semibold mb-2">Avg Dwell Time</h4>
                 <p className="text-3xl font-bold">
                   {analysisResult.dwell_time_analysis?.average_dwell_time?.toFixed(
