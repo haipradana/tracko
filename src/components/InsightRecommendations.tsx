@@ -137,17 +137,28 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
   const [promptOutput, setPromptOutput] = useState<string>("");
   const [promptAnswer, setPromptAnswer] = useState<string>("");
 
-  const handlePromptInsights = async () => {
+  const suggestedPrompts = [
+    'Bagaimana heatmap pengunjung membantu optimasi toko saya?',
+    'Rak mana yang paling populer dan mengapa?',
+    'Berikan 3 rekomendasi praktis untuk meningkatkan dwell time.',
+    'Identifikasi perilaku pelanggan yang paling umum.',
+    'Area mana yang paling sering diabaikan oleh pelanggan?',
+  ];
+
+  const handlePromptInsights = async (question?: string) => {
+    const currentPrompt = question || prompt;
+    if (!currentPrompt) return;
+
     try {
       setPromptError("");
       setPromptLoading(true);
-      setPromptOutput("");
+      setPromptAnswer(""); // Clear previous answer
       // Fallback ke origin jika env tidak ada (reverse proxy same-origin)
       const heatmapUrl = (analysisData as any)?.download_links?.heatmap_image as string | undefined;
       const shelfmapUrl = ((analysisData as any)?.download_links?.shelf_map_image as string | undefined)
         || (((analysisData as any)?.download_links?.shelf_map_images || [])[0] as string | undefined);
       const payload = {
-        prompt,
+        prompt: currentPrompt,
         data: {
           unique_persons: analysisData?.unique_persons,
           total_interactions: analysisData?.total_interactions,
@@ -206,6 +217,11 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
     } finally {
       setPromptLoading(false);
     }
+  };
+
+  const handleSuggestedQuestionClick = (question: string) => {
+    setPrompt(question);
+    handlePromptInsights(question);
   };
 
   const getInsightStyle = (type: string) => {
@@ -280,6 +296,25 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
 
   return (
     <div className="space-y-6">
+      <style>{`
+        .prompt-suggestions-container {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+        .prompt-suggestions-container::-webkit-scrollbar {
+          height: 4px;
+        }
+        .prompt-suggestions-container::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .prompt-suggestions-container::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.2);
+          border-radius: 20px;
+        }
+         .prompt-suggestions-container::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
       {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center space-x-3 mb-4">
@@ -331,9 +366,20 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
             Tanya AI
           </h4>
           <div className="space-y-3">
+            <div className="prompt-suggestions-container flex items-center gap-2 overflow-x-auto pb-2 -mb-1">
+              {suggestedPrompts.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSuggestedQuestionClick(q)}
+                  className="text-sm px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 whitespace-nowrap hover:bg-white/10 transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
             <textarea className="w-full min-h-[120px] p-3 rounded-lg bg-white/5 border border-white/10" value={prompt} onChange={(e)=>setPrompt(e.target.value)} />
             <div className="flex gap-3 items-center">
-              <button className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10" onClick={handlePromptInsights} disabled={promptLoading}>
+              <button className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10" onClick={() => handlePromptInsights()} disabled={promptLoading}>
                 {promptLoading ? 'Mohon tunggu…' : 'Tanya!'}
               </button>
               {promptError && <span className="text-red-400 text-sm">{promptError}</span>}

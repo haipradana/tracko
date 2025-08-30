@@ -11,18 +11,24 @@ const DurationSlider: React.FC<DurationSliderProps> = ({ value, onChange, fileSi
   const isLargeFile = fileSize && fileSize > 7000000; // 7MB
   const fileSizeMB = fileSize ? (fileSize / 1024 / 1024).toFixed(1) : '0';
   
+  const min = 10;
+  const max = 150;
+  const percentage = ((value - min) / (max - min)) * 100;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3">
         <input
           type="range"
-          min="10"
-          max="300"
+          min={min}
+          max={max}
           step="10"
           value={value}
           onChange={(e) => onChange(parseInt(e.target.value))}
-          className="flex-1 h-3 rounded-full appearance-none cursor-pointer"
-          style={{ background:'#e7dfd2' }}
+          className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, #1f49a6 0%, #1f49a6 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`,
+          }}
         />
           <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white text-gray-900 font-semibold shadow-md"
             style={{

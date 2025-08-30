@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Clock, Users, BarChart } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface DwellTimeChartProps {
   data: { shelf: string; time: number }[];
@@ -118,7 +120,9 @@ const DwellTimeChart: React.FC<DwellTimeChartProps> = ({ data, altData }) => {
             {bulletItems.map((line, idx) => (
               <li key={idx} className="flex items-start">
                 <span className="text-blue-500 mr-2">•</span>
-                <span>{line}</span>
+                <div className="prose prose-sm max-w-none text-blue-800">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{line}</ReactMarkdown>
+                </div>
               </li>
             ))}
           </ul>

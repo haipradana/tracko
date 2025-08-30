@@ -9,6 +9,7 @@ import InsightRecommendations from "./components/InsightRecommendations";
 import AnnotatedVideo from "./components/AnnotatedVideo";
 import TopActions from "./components/TopActions";
 import TrackGallery from "./components/TrackGallery";
+import StaticInsightPlaceholder from "./components/StaticInsightPlaceholder"; // Import the new component
 import { AlertCircle, Sparkles, Settings } from "lucide-react";
 import axios from "axios";
 
@@ -178,6 +179,14 @@ function App() {
   const [excludedIds, setExcludedIds] = useState<Array<number>>([]);
 
   const uploadSectionRef = useRef<HTMLDivElement | null>(null);
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    const targetElement = document.getElementById(targetId);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleDownload = () => {
     if (currentStep === AnalysisStep.COMPLETED) {
@@ -563,15 +572,19 @@ function App() {
                 opacity: 0.9,
               }}
             >
-              Hasil
+              Demo
             </a>
             <a
               href="#insights"
+              onClick={(e) => handleNavClick(e, 'insights')}
               style={{
-                color: "#2a3345",
+                background: "linear-gradient(135deg,#1f49a6,#0a193a)",
+                color: "#fff",
+                padding: "8px 16px",
+                borderRadius: "15px",
                 textDecoration: "none",
                 fontSize: 14,
-                opacity: 0.9,
+                fontWeight: 500,
               }}
             >
               AI Insights
@@ -1058,6 +1071,7 @@ function App() {
                 </div>
               </div>
             </div>
+            <StaticInsightPlaceholder /> 
           </div>
         )}
 
@@ -1482,7 +1496,7 @@ function App() {
             </div>
 
             {/* AI Insights */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-8 text-white">
+            <div id="insights" className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-8 text-white">
               <div
                 className="flex items-center justify-between"
                 style={{
