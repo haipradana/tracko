@@ -121,7 +121,14 @@ const DwellTimeChart: React.FC<DwellTimeChartProps> = ({ data, altData }) => {
               <li key={idx} className="flex items-start">
                 <span className="text-blue-500 mr-2">•</span>
                 <div className="prose prose-sm max-w-none text-blue-800">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{line}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      strong: ({ node, ...props }) => <strong className="font-bold" {...props} />,
+                    }}
+                  >
+                    {line}
+                  </ReactMarkdown>
                 </div>
               </li>
             ))}

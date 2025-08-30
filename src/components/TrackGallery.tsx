@@ -1,4 +1,5 @@
 import React, { useMemo, useRef } from 'react';
+import { UserX, Users, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
 
 export interface TrackGalleryItem {
   pid: number;
@@ -31,18 +32,30 @@ const TrackGallery: React.FC<TrackGalleryProps> = ({ items, excludedIds, onToggl
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Track Gallery</h3>
           {excludedIds.length > 0 && (
             <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm bg-red-50 text-red-700 border border-red-200">
               🚫 {excludedIds.length} excluded
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => scrollBy('left')} className="px-3 py-1 rounded-lg bg-white border" style={{ borderColor:'#e6dfd2' }}>{'◀'}</button>
-          <button onClick={() => scrollBy('right')} className="px-3 py-1 rounded-lg bg-white border" style={{ borderColor:'#e6dfd2' }}>{'▶'}</button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => scrollBy('left')} 
+            className="p-1.5 rounded-full text-white" 
+            style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}
+          >
+            <ArrowBigLeft className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => scrollBy('right')} 
+            className="p-1.5 rounded-full text-white" 
+            style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}
+          >
+            <ArrowBigRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
 

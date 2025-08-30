@@ -19,9 +19,20 @@ interface BehaviorArchetypesProps {
   analysisData: AnalysisData | null;
 }
 
+const formatShelfName = (shelfId: string) => {
+  return shelfId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
 const BehaviorArchetypes: React.FC<BehaviorArchetypesProps> = ({ analysisData }) => {
-  const rows = useMemo(() => {
-    if (!analysisData) return [] as Array<{ shelf: string; unique: number; dwell: number; archetype: string; trend: 'up' | 'down' | 'stable' }>;
+  const { rows, highPerformers, needAttention, stableZones } = useMemo(() => {
+    if (!analysisData) {
+      return {
+        rows: [],
+        highPerformers: [],
+        needAttention: [],
+        stableZones: [],
+      };
+    }
 
     const dwellTimes = analysisData.shelf_dwell_times || {};
     const actionMap = analysisData.action_shelf_mapping || [];
@@ -83,7 +94,13 @@ const BehaviorArchetypes: React.FC<BehaviorArchetypesProps> = ({ analysisData })
     });
 
     // sort by unique visitors desc
-    return data.sort((a, b) => b.unique - a.unique);
+    const sortedRows = data.sort((a, b) => b.unique - a.unique);
+
+    const highPerformers = sortedRows.filter(r => r.trend === 'up').map(r => r.shelf);
+    const needAttention = sortedRows.filter(r => r.trend === 'down').map(r => r.shelf);
+    const stableZones = sortedRows.filter(r => r.trend === 'stable').map(r => r.shelf);
+
+    return { rows: sortedRows, highPerformers, needAttention, stableZones };
   }, [analysisData]);
 
   const getTrendIcon = (trend: string) => {
@@ -139,7 +156,7 @@ const BehaviorArchetypes: React.FC<BehaviorArchetypesProps> = ({ analysisData })
                     <div className="flex items-center">
                       <div className="w-2 h-2 bg-gradient-to-r from-blue-950 to-blue-800 rounded-full mr-3"></div>
                       <div className="text-sm font-semibold text-gray-900">
-                        {item.shelf}
+                        {formatShelfName(item.shelf)}
                       </div>
                     </div>
                   </td>
@@ -175,26 +192,32 @@ const BehaviorArchetypes: React.FC<BehaviorArchetypesProps> = ({ analysisData })
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-950 to-blue-800 border border-blue-700 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-br from-blue-950 to-blue-800 rounded-2xl p-6 text-white">
           <div className="flex items-center mb-3">
             <div className="w-3 h-3 bg-blue-400 rounded-full mr-3"></div>
             <h4 className="font-semibold">High Performers</h4>
           </div>
-          <p className="text-sm text-blue-200">Rak dengan konversi tinggi & dwell memadai</p>
+          <p className="text-sm text-blue-200 font-mono">
+            {highPerformers.length > 0 ? highPerformers.map(formatShelfName).join(', ') : 'Tidak ada'}
+          </p>
         </div>
-        <div className="bg-gradient-to-br from-blue-900 to-blue-700 border border-blue-600 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-br from-blue-950 to-blue-800 rounded-2xl p-6 text-white">
           <div className="flex items-center mb-3">
             <div className="w-3 h-3 bg-yellow-400 rounded-full mr-3"></div>
             <h4 className="font-semibold">Need Attention</h4>
           </div>
-          <p className="text-sm text-blue-200">Rak dengan keraguan tinggi atau traffic besar namun engagement rendah</p>
+          <p className="text-sm text-blue-200 font-mono">
+            {needAttention.length > 0 ? needAttention.map(formatShelfName).join(', ') : 'Tidak ada'}
+          </p>
         </div>
-        <div className="bg-gradient-to-br from-blue-800 to-blue-600 border border-blue-500 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-br from-blue-950 to-blue-800 rounded-2xl p-6 text-white">
           <div className="flex items-center mb-3">
             <div className="w-3 h-3 bg-gray-300 rounded-full mr-3"></div>
             <h4 className="font-semibold">Stable Zones</h4>
           </div>
-          <p className="text-sm text-blue-200">Rak dengan performa konsisten</p>
+          <p className="text-sm text-blue-200 font-mono">
+            {stableZones.length > 0 ? stableZones.map(formatShelfName).join(', ') : 'Tidak ada'}
+          </p>
         </div>
       </div>
     </div>
