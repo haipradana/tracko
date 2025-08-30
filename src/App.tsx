@@ -188,6 +188,14 @@ function App() {
     }
   };
 
+  const handleHomeClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    resetAnalysis();
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
+  };
+
   const handleDownload = () => {
     if (currentStep === AnalysisStep.COMPLETED) {
       // Reset back to start for new analysis
@@ -527,14 +535,7 @@ function App() {
             gap: 15,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontWeight: 700,
-            }}
-          >
+          <a href="/" onClick={handleHomeClick} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
                 display: "grid",
@@ -550,7 +551,7 @@ function App() {
               🟦
             </div>
             <b>Tracko</b>
-          </div>
+          </a>
           <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
             <a
               href="#features"
