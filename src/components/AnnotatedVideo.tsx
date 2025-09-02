@@ -120,7 +120,7 @@ const AnnotatedVideo: React.FC<AnnotatedVideoProps> = ({ videoUrl, analysisId, d
             className="inline-flex items-center px-4 py-2 rounded-xl text-gray-900 font-semibold"
             style={{ background: '#fff', border: '1px solid #e6dfd2', boxShadow: '0 8px 20px 0 rgba(10,25,58,0.12)' }}
           >
-            View Original Video
+            Lihat Video Asli
           </a>
         )}
       </div>

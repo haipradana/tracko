@@ -12,6 +12,8 @@ import TrackGallery from "./components/TrackGallery";
 import StaticInsightPlaceholder from "./components/StaticInsightPlaceholder"; // Import the new component
 import { AlertCircle, Sparkles, Settings } from "lucide-react";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // API Configuration
 const FASTAPI_URL =
@@ -222,6 +224,79 @@ function App() {
   const [shelfMapIndex, setShelfMapIndex] = useState<number>(0);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [excludedIds, setExcludedIds] = useState<Array<number>>([]);
+  const [comparisonInsight, setComparisonInsight] = useState<string>("");
+  const [loadingInsight, setLoadingInsight] = useState(false);
+
+  // ImageSlider Component
+  const ImageSlider: React.FC<{ heatmapUrl?: string; shelfMapUrl?: string }> = ({ heatmapUrl, shelfMapUrl }) => {
+    const [showHeatmap, setShowHeatmap] = useState(true);
+    
+    return (
+              <div className="mb-3">
+          <div className="aspect-square bg-gray-100 rounded-lg p-2 relative">
+            {/* Toggle Buttons */}
+            {heatmapUrl && shelfMapUrl && (
+              <div className="absolute top-1 right-1 z-10 flex gap-1">
+                <button
+                  onClick={() => setShowHeatmap(true)}
+                  className={`px-2 py-1 text-xs rounded shadow-md ${
+                    showHeatmap ? 'text-white' : 'bg-white text-gray-600'
+                  }`}
+                  style={{
+                    background: showHeatmap ? 'linear-gradient(135deg,#1f49a6,#0a193a)' : undefined,
+                    boxShadow: showHeatmap ? '0 4px 8px rgba(10,25,58,0.3)' : '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  Heat
+                </button>
+                <button
+                  onClick={() => setShowHeatmap(false)}
+                  className={`px-2 py-1 text-xs rounded shadow-md ${
+                    !showHeatmap ? 'text-white' : 'bg-white text-gray-600'
+                  }`}
+                  style={{
+                    background: !showHeatmap ? 'linear-gradient(135deg,#1f49a6,#0a193a)' : undefined,
+                    boxShadow: !showHeatmap ? '0 4px 8px rgba(10,25,58,0.3)' : '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  Shelf
+                </button>
+              </div>
+            )}
+          
+          {/* Image Display */}
+          {showHeatmap && heatmapUrl ? (
+            <img 
+              src={heatmapUrl} 
+              alt="Traffic Heatmap"
+              className="w-full h-full object-cover rounded"
+            />
+          ) : !showHeatmap && shelfMapUrl ? (
+            <div className="w-full h-full flex items-center justify-center bg-white rounded">
+              <img 
+                src={shelfMapUrl} 
+                alt="Shelf Map"
+                className="max-w-full max-h-full object-contain rounded"
+                style={{ maxHeight: '100%', maxWidth: '100%' }}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+              No image available
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-1 text-center">
+          {(() => {
+            if (heatmapUrl && shelfMapUrl) return "Traffic Heatmap / Shelf Map";
+            if (heatmapUrl) return "Traffic Heatmap";
+            if (shelfMapUrl) return "Shelf Map";
+            return "No Image";
+          })()}
+        </p>
+      </div>
+    );
+  };
 
   const uploadSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -561,6 +636,40 @@ function App() {
   };
 
   // --- Track Gallery handlers ---
+  const fetchComparisonInsights = async () => {
+    if (!batchResult || viewMode !== 'comparison') return;
+    
+    setLoadingInsight(true);
+    try {
+      const filesData = batchResult.individual_results.map((result, idx) => ({
+        filename: result.metadata?.original_filename || `File ${idx + 1}`,
+        unique_persons: result.unique_persons,
+        total_interactions: result.total_interactions,
+        avg_dwell_time: result.dwell_time_analysis.average_dwell_time,
+        top_action: result.behavioral_insights.most_common_action,
+        shelves_count: Object.keys(result.shelf_interactions || {}).length,
+        heatmap_image: result.download_links?.heatmap_image,
+        shelf_map_image: result.download_links?.shelf_map_image
+      }));
+      
+      const response = await axios.post(`${FASTAPI_URL}/comparison-insights`, {
+        files_data: filesData
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 60000
+      });
+      
+      if (response.data?.insight) {
+        setComparisonInsight(response.data.insight);
+      }
+    } catch (error) {
+      console.error('Error fetching comparison insights:', error);
+      setComparisonInsight('Gagal mengambil insight perbandingan. Silakan coba lagi.');
+    } finally {
+      setLoadingInsight(false);
+    }
+  };
+
   const toggleExcludePid = async (pid: number) => {
     const currentData = getCurrentAnalysisData();
     if (!currentData) return;
@@ -1210,49 +1319,49 @@ function App() {
           {currentStep === AnalysisStep.COMPLETED && batchResult && (
             <div className="hero-inner space-y-8 pb-7">
               <div className="bg-white rounded-3xl shadow-sm p-8" style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.88)' }}>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Batch Analysis Results</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Hasil Analisis Multi File</h2>
                   
                   {/* View Mode Toggle */}
                   <div className="flex gap-4 mb-6">
-                    <button
-                      onClick={() => setViewMode('individual')}
-                      className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                        viewMode === 'individual'
-                          ? 'text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      style={viewMode === 'individual' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
-                    >
-                      Individual Files
-                    </button>
-                    <button
-                      onClick={() => setViewMode('comparison')}
-                      className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                        viewMode === 'comparison'
-                          ? 'text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      style={viewMode === 'comparison' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
-                    >
-                      Comparison
-                    </button>
-                    <button
-                      onClick={() => setViewMode('summary')}
-                      className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                        viewMode === 'summary'
-                          ? 'text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      style={viewMode === 'summary' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
-                    >
-                      Summary
-                    </button>
+                                          <button
+                        onClick={() => setViewMode('individual')}
+                        className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                          viewMode === 'individual'
+                            ? 'text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={viewMode === 'individual' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
+                      >
+                        File Individual
+                      </button>
+                                          <button
+                        onClick={() => setViewMode('comparison')}
+                        className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                          viewMode === 'comparison'
+                            ? 'text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={viewMode === 'comparison' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
+                      >
+                        Perbandingan
+                      </button>
+                                          <button
+                        onClick={() => setViewMode('summary')}
+                        className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                          viewMode === 'summary'
+                            ? 'text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={viewMode === 'summary' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
+                      >
+                        Ringkasan
+                      </button>
                   </div>
 
                   {/* File Selector for Individual View */}
                   {viewMode === 'individual' && (
                     <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-3">Select File to Analyze:</h3>
+                      <h3 className="text-lg font-semibold mb-3">Pilih File untuk Dianalisis:</h3>
                       <div className="grid gap-3">
                         {batchResult.individual_results.map((result, idx) => (
                           <button
@@ -1271,20 +1380,20 @@ function App() {
                                 </div>
                                 <div>
                                   <p className="font-semibold text-gray-900">
-                                    {result.metadata?.original_filename || 
+                                    {result.metadata?.original_filename ||
                                      (uploadedFiles[idx] ? uploadedFiles[idx].name : `File ${idx + 1}`)}
                                   </p>
                                   <p className="text-sm text-gray-600">
-                                    {result.unique_persons} persons • {Object.keys(result.shelf_interactions).length} shelves
+                                    {result.unique_persons} pelanggan • {Object.keys(result.shelf_interactions).length} rak
                                   </p>
                                 </div>
                               </div>
                               <div className="text-right">
                                 <p className="text-sm font-medium text-gray-700">
-                                  {result.dwell_time_analysis.average_dwell_time.toFixed(1)}s avg dwell
+                                  {result.dwell_time_analysis.average_dwell_time.toFixed(1)}s rata-rata
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  {result.metadata?.file_size ? 
+                                  {result.metadata?.file_size ?
                                     `${(result.metadata.file_size / 1024 / 1024).toFixed(1)} MB` :
                                     (uploadedFiles[idx] ? `${(uploadedFiles[idx].size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size')
                                   }
@@ -1300,7 +1409,7 @@ function App() {
                   {/* Comparison View */}
                   {viewMode === 'comparison' && (
                     <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-4">Side-by-Side Comparison</h3>
+                      <h3 className="text-lg font-semibold mb-4">Perbandingan Langsung</h3>
                       <div className="flex flex-wrap justify-center gap-4">
                         {batchResult.individual_results.map((result, idx) => (
                           <div key={idx} className="bg-white p-4 rounded-xl border border-gray-200 w-full sm:w-80 max-w-sm">
@@ -1314,57 +1423,36 @@ function App() {
                               </h4>
                             </div>
                             
-                            {/* Mini Heatmap */}
-                            <div className="mb-3">
-                              <div className="aspect-square bg-gray-100 rounded-lg p-2">
-                                {result.download_links?.heatmap_image ? (
-                                  <img 
-                                    src={result.download_links.heatmap_image} 
-                                    alt="Traffic Heatmap"
-                                    className="w-full h-full object-cover rounded"
-                                    onError={(e) => {
-                                       e.currentTarget.style.display = 'none';
-                                       const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
-                                       if (nextElement) {
-                                         nextElement.style.display = 'flex';
-                                       }
-                                     }}
-                                  />
-                                ) : null}
-                                <div 
-                                  className="w-full h-full flex items-center justify-center text-gray-400 text-xs"
-                                  style={{ display: result.download_links?.heatmap_image ? 'none' : 'flex' }}
-                                >
-                                  No heatmap image
-                                </div>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1 text-center">Traffic Heatmap</p>
-                            </div>
+                            {/* Image Slider: Heatmap/Shelf Map */}
+                            <ImageSlider 
+                              heatmapUrl={result.download_links?.heatmap_image}
+                              shelfMapUrl={result.download_links?.shelf_map_image}
+                            />
                             
                             {/* Key Metrics */}
                             <div className="space-y-2">
                               <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-600">Persons:</span>
+                                <span className="text-xs text-gray-600">Pelanggan:</span>
                                 <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>{result.unique_persons}</span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-600">Interactions:</span>
+                                <span className="text-xs text-gray-600">Interaksi:</span>
                                 <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>{result.total_interactions}</span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-600">Avg Dwell:</span>
+                                <span className="text-xs text-gray-600">Rata-rata Dwell:</span>
                                 <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>
                                   {result.dwell_time_analysis.average_dwell_time.toFixed(1)}s
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-600">Top Action:</span>
+                                <span className="text-xs text-gray-600">Aksi Terbanyak:</span>
                                 <span className="text-xs font-medium text-gray-800 truncate">
                                   {result.behavioral_insights.most_common_action}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-600">Shelves:</span>
+                                <span className="text-xs text-gray-600">Rak:</span>
                                 <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>
                                   {Object.keys(result.shelf_interactions).length}
                                 </span>
@@ -1380,10 +1468,77 @@ function App() {
                               className="w-full mt-3 px-3 py-2 text-white rounded-lg text-xs font-medium transition-colors hover:opacity-90"
                               style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}
                             >
-                              View Details
+                              Lihat Detail
                             </button>
                           </div>
                         ))}
+                      </div>
+
+                      {/* AI Insights Section - moved to Comparison view */}
+                      <div className="mt-8">
+                        <div
+                          className="rounded-3xl shadow-sm p-8"
+                          style={{
+                            background: 'linear-gradient(135deg,#1f49a6,#0a193a)',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                          }}
+                        >
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                style={{ background: 'rgba(255,255,255,0.15)' }}
+                              >
+                                <Sparkles className="h-5 w-5 text-yellow-300" />
+                              </div>
+                              <h3 className="text-xl font-bold text-white">AI Insights & Rekomendasi</h3>
+                            </div>
+                            <button
+                              onClick={fetchComparisonInsights}
+                              disabled={loadingInsight}
+                              className="px-4 py-2 rounded-xl text-white font-medium transition-all"
+                              style={{
+                                background: loadingInsight ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)',
+                                border: '1px solid rgba(255,255,255,0.3)'
+                              }}
+                            >
+                              {loadingInsight ? 'Menganalisis...' : 'Generate Insights'}
+                            </button>
+                          </div>
+
+                          {comparisonInsight ? (
+                            <div
+                              className="rounded-xl p-6 text-white"
+                              style={{ background: 'rgba(255,255,255,0.1)' }}
+                            >
+                              <div className="prose prose-invert max-w-none prose-ul:pl-6 prose-ol:pl-6 prose-li:my-0.5 prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    h1: (p) => <h3 className="!mt-3 !mb-1" {...p} />,
+                                    h2: (p) => <h4 className="!mt-3 !mb-1" {...p} />,
+                                    h3: (p) => <h5 className="!mt-3 !mb-1" {...p} />,
+                                    ul: (p) => <ul className="!pl-6 list-disc" {...p} />,
+                                    ol: (p) => <ol className="!pl-6 list-decimal" {...p} />,
+                                    li: (p) => <li className="!my-0.5" {...p} />,
+                                    p:  (p) => <p className="!my-1" {...p} />,
+                                  }}
+                                >
+                                  {comparisonInsight}
+                                </ReactMarkdown>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <p className="text-white/70 mb-4">
+                                Dapatkan insight AI dari perbandingan multiple files dengan analisis heatmap dan shelf map.
+                              </p>
+                              <p className="text-white/50 text-sm">
+                                Klik "Generate Insights" untuk mendapatkan rekomendasi berbasis data.
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1393,33 +1548,33 @@ function App() {
                     <div className="mb-6">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div className="p-6 rounded-xl" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
-                          <h4 className="font-semibold text-white mb-2">Total Files</h4>
+                          <h4 className="font-semibold text-white mb-2">Total File</h4>
                           <p className="text-3xl font-bold text-white">{batchResult.total_files}</p>
                         </div>
                         <div className="p-6 rounded-xl" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
-                          <h4 className="font-semibold text-white mb-2">Total Persons</h4>
+                          <h4 className="font-semibold text-white mb-2">Total Pelanggan</h4>
                           <p className="text-3xl font-bold text-white">{batchResult.aggregate_metrics.total_unique_persons}</p>
                         </div>
                         <div className="p-6 rounded-xl" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
-                          <h4 className="font-semibold text-white mb-2">Avg Dwell Time</h4>
+                          <h4 className="font-semibold text-white mb-2">Rata-rata Dwell Time</h4>
                           <p className="text-3xl font-bold text-white">{batchResult.aggregate_metrics.average_dwell_time_across_videos.toFixed(1)}s</p>
                         </div>
                       </div>
                       
                       {/* Per-File Summary Table */}
-                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-200">
-                          <h4 className="font-semibold text-gray-900">Per-File Summary</h4>
-                        </div>
+                                              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                          <div className="px-6 py-4 border-b border-gray-200">
+                            <h4 className="font-semibold text-gray-900">Ringkasan per File</h4>
+                          </div>
                         <div className="overflow-x-auto">
                           <table className="w-full">
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Persons</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interactions</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Dwell</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Action</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pelanggan</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interaksi</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rata-rata Dwell</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi Terbanyak</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
