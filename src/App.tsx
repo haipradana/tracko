@@ -586,23 +586,35 @@ function App() {
       });
       
       if (resp?.data) {
-        // Merge analytics into current result, but intelligently merge download_links
+        // Deep merge download_links, otherwise the new response (with only heatmap_image) will overwrite other links
+        const newDownloadLinks = {
+          ...(currentData.download_links || {}),
+          ...(resp.data.download_links || {})
+        };
+        
+        const merged: AnalysisResult = {
+          ...currentData,
+          ...resp.data,
+          download_links: newDownloadLinks
+        };
+
+        // Update single file analysis if exists
         setAnalysisResult((prev) => {
           if (!prev) return prev;
-          
-          // Deep merge download_links, otherwise the new response (with only heatmap_image) will overwrite other links
-          const newDownloadLinks = {
-            ...(prev.download_links || {}),
-            ...(resp.data.download_links || {})
-          };
-          
-          const merged: AnalysisResult = {
-            ...prev,
-            ...resp.data,
-            download_links: newDownloadLinks
-          };
-
           return merged;
+        });
+        
+        // Update batch analysis if exists
+        setBatchResult((prev) => {
+          if (!prev || viewMode !== 'individual') return prev;
+          
+          const updatedResults = [...prev.individual_results];
+          updatedResults[selectedFileIndex] = merged;
+          
+          return {
+            ...prev,
+            individual_results: updatedResults
+          };
         });
       }
     } catch (e: any) {
