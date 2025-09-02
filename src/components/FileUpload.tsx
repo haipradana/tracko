@@ -103,13 +103,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, uploadedFiles, co
       <div onDrop={handleDrop} onDragOver={(e)=>e.preventDefault()} className="cursor-pointer">
         <input type="file" accept="video/*,image/*" onChange={handleFileSelect} className="hidden" id="file-upload" multiple={multiple} />
         <label htmlFor="file-upload" className="inline-flex items-center px-4 py-2 rounded-xl text-white" style={{ background:'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
-          {multiple ? 'Browse Multiple Files' : 'Browse Files'}
+          {multiple ? 'Upload CCTV Tokomu' : 'Upload CCTV Tokomu'}
         </label>
         {uploadedFiles.length > 0 && (
           <span className="ml-3 text-gray-700">
             {uploadedFiles.length === 1 
               ? `${uploadedFiles[0].name} · ${formatFileSize(uploadedFiles[0].size)}`
-              : `${uploadedFiles.length} files selected`
+              : `${uploadedFiles.length} video dipilih`
             }
           </span>
         )}
