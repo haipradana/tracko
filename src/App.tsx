@@ -140,6 +140,38 @@ interface AnalysisResult {
   };
 }
 
+interface BatchAnalysisResult {
+  analysis_type: 'batch_analysis';
+  batch_id: string;
+  total_files: number;
+  individual_results: AnalysisResult[];
+  aggregate_metrics: {
+    total_unique_persons: number;
+    total_interactions: number;
+    average_dwell_time_across_videos: number;
+    most_common_action_overall: string;
+    total_analysis_duration: number;
+    files_analyzed: number;
+    action_distribution?: Record<string, number>;
+    per_file_summary?: Array<{
+      filename: string;
+      unique_persons: number;
+      total_interactions: number;
+      avg_dwell_time: number;
+      most_common_action: string;
+    }>;
+  };
+  batch_metadata: {
+    timestamp: string;
+    processing_time: number;
+    files_info: Array<{
+      filename: string;
+      file_size: number;
+      analysis_id: string;
+    }>;
+  };
+}
+
 enum AnalysisStep {
   UPLOAD = "upload",
   PROCESSING = "processing",
@@ -148,10 +180,14 @@ enum AnalysisStep {
 }
 
 function App() {
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [originalVideoUrl, setOriginalVideoUrl] = useState<string | null>(null);
+  // File management
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [originalVideoUrls, setOriginalVideoUrls] = useState<string[]>([]);
+  const [isMultipleMode, setIsMultipleMode] = useState(false);
+  
+  // Analysis settings
   const [maxDuration, setMaxDuration] = useState(30);
-  const [frameSkip, setFrameSkip] = useState(1.0); // State for new slider
+  const [frameSkip, setFrameSkip] = useState(1.0);
   const [showSettings, setShowSettings] = useState(false);
   type SpeedMode = "high" | "balanced" | "fast";
   const modeFromValue = (v: number): SpeedMode => (v <= 0.75 ? "high" : v <= 1.5 ? "balanced" : "fast");
@@ -164,12 +200,21 @@ function App() {
   useEffect(() => {
     setSpeedMode(modeFromValue(frameSkip));
   }, [frameSkip]);
+  
+  // Analysis state
   const [currentStep, setCurrentStep] = useState<AnalysisStep>(
     AnalysisStep.UPLOAD
   );
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null
   );
+  const [batchResult, setBatchResult] = useState<BatchAnalysisResult | null>(
+    null
+  );
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0);
+  const [viewMode, setViewMode] = useState<'individual' | 'comparison' | 'summary'>('individual');
+  
+  // UI state
   const [error, setError] = useState<string>("");
   const [progress, setProgress] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -219,15 +264,49 @@ function App() {
     if (input) input.click();
   };
 
+  // Get current analysis data based on view mode
+  const getCurrentAnalysisData = (): AnalysisResult | null => {
+    if (batchResult && viewMode === 'individual') {
+      return batchResult.individual_results[selectedFileIndex] || null;
+    }
+    return analysisResult;
+  };
+
+  // Get current file info
+  const getCurrentFileInfo = () => {
+    if (uploadedFiles.length === 0) return null;
+    if (isMultipleMode && viewMode === 'individual') {
+      return uploadedFiles[selectedFileIndex] || uploadedFiles[0];
+    }
+    return uploadedFiles[0];
+  };
+
+  // Use getCurrentFileInfo to avoid unused variable warning
+  const currentFileInfo = getCurrentFileInfo();
+  
+  // Suppress unused variable warnings
+  void currentFileInfo;
+  void progress;
+
   const handleAnalyze = async () => {
-    if (!uploadedFile) return;
+    if (uploadedFiles.length === 0) return;
+
+    // Determine if we should use batch or single analysis
+    const isBatch = uploadedFiles.length > 1;
 
     console.log("🚀 Starting analysis...");
-    console.log(
-      "📄 File:",
-      uploadedFile.name,
-      `(${(uploadedFile.size / 1024 / 1024).toFixed(1)} MB)`
-    );
+    if (isBatch) {
+      console.log(
+        "📄 Batch Files:",
+        uploadedFiles.map(f => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ')
+      );
+    } else {
+      console.log(
+        "📄 File:",
+        uploadedFiles[0].name,
+        `(${(uploadedFiles[0].size / 1024 / 1024).toFixed(1)} MB)`
+      );
+    }
 
     setCurrentStep(AnalysisStep.PROCESSING);
     setIsAnalyzing(true);
@@ -237,27 +316,36 @@ function App() {
 
     // Create FormData
     const formData = new FormData();
-    formData.append("video", uploadedFile);
+    if (isBatch) {
+      uploadedFiles.forEach(file => {
+        formData.append("videos", file);
+      });
+    } else {
+      formData.append("video", uploadedFiles[0]);
+    }
     formData.append("max_duration", maxDuration.toString());
-    formData.append("frame_skip_multiplier", frameSkip.toString()); // Add this
+    formData.append("frame_skip_multiplier", frameSkip.toString());
     formData.append("save_to_blob", "true");
     formData.append("generate_video", "true");
 
     console.log("📋 Form data prepared:", {
-      filename: uploadedFile.name,
+      filenames: uploadedFiles.map(f => f.name),
+      fileCount: uploadedFiles.length,
       maxDuration,
-      frameSkip, // Log this
-      fileSize: uploadedFile.size,
+      frameSkip,
+      totalSize: uploadedFiles.reduce((sum, f) => sum + f.size, 0),
+      isBatch
     });
 
     // Keep initial small start; further progress will be driven by timer below
     setProgress(5);
 
     try {
-      console.log("📤 Sending request to:", `${FASTAPI_URL}/analyze`);
+      const endpoint = isBatch ? `${FASTAPI_URL}/analyze-batch` : `${FASTAPI_URL}/analyze`;
+      console.log("📤 Sending request to:", endpoint);
       console.log("⏱️ Timeout set to:", 900000, "ms (15 minutes)");
 
-      const response = await axios.post(`${FASTAPI_URL}/analyze`, formData, {
+      const response = await axios.post(endpoint, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -310,12 +398,23 @@ function App() {
         // Set progress to 100% before updating state
         setProgress(100);
 
-        // Update state
-        setAnalysisResult(response.data);
+        // Update state based on response type
+        if (response.data.analysis_type === 'batch_analysis') {
+          setBatchResult(response.data);
+          setAnalysisResult(null);
+        } else {
+          setAnalysisResult(response.data);
+          setBatchResult(null);
+        }
         setCurrentStep(AnalysisStep.COMPLETED);
 
         console.log("🎉 Analysis completed successfully!");
-        console.log("👥 Unique persons:", response.data.unique_persons);
+        if (response.data.analysis_type === 'batch_analysis') {
+          console.log("📊 Batch Analysis:", response.data.total_files, "files processed");
+          console.log("👥 Total unique persons:", response.data.aggregate_metrics.total_unique_persons);
+        } else {
+          console.log("👥 Unique persons:", response.data.unique_persons);
+        }
         console.log("🔄 Total interactions:", response.data.total_interactions);
       } else {
         throw new Error("No data received from analysis");
@@ -365,8 +464,11 @@ function App() {
   const resetAnalysis = () => {
     setCurrentStep(AnalysisStep.UPLOAD);
     setAnalysisResult(null);
-    setUploadedFile(null);
-    setOriginalVideoUrl(null);
+    setBatchResult(null);
+    setUploadedFiles([]);
+    setOriginalVideoUrls([]);
+    setSelectedFileIndex(0);
+    setViewMode('individual');
     setVideoDuration(null);
     setError("");
     setProgress(0);
@@ -374,26 +476,41 @@ function App() {
     setExcludedIds([]);
   };
 
-  // Build local preview URL for the uploaded (original) video
-  useEffect(() => {
-    if (uploadedFile) {
-      const url = URL.createObjectURL(uploadedFile);
-      setOriginalVideoUrl(url);
+  const handleFileUpload = (files: File[] | null) => {
+    if (files && files.length > 0) {
+      setUploadedFiles(files);
+      setIsMultipleMode(files.length > 1);
+    } else {
+      setUploadedFiles([]);
+      setIsMultipleMode(false);
+    }
+  };
 
-      // Auto-detect video duration
-      const videoElement = document.createElement("video");
-      videoElement.src = url;
-      videoElement.onloadedmetadata = () => {
-        setVideoDuration(videoElement.duration);
-      };
+  // Build local preview URLs for uploaded videos
+  useEffect(() => {
+    if (uploadedFiles.length > 0) {
+      const urls = uploadedFiles.map(file => URL.createObjectURL(file));
+      setOriginalVideoUrls(urls);
+
+      // Auto-detect video duration for first video
+      if (uploadedFiles[0]) {
+        const videoElement = document.createElement("video");
+        videoElement.src = urls[0];
+        videoElement.onloadedmetadata = () => {
+          setVideoDuration(videoElement.duration);
+        };
+      }
 
       return () => {
-        URL.revokeObjectURL(url);
-        setVideoDuration(null); // Clean up on file change
+        urls.forEach(url => URL.revokeObjectURL(url));
+        setVideoDuration(null);
       };
+    } else {
+      setOriginalVideoUrls([]);
+      setVideoDuration(null);
     }
     return;
-  }, [uploadedFile]);
+  }, [uploadedFiles]);
 
   // Run processing timer while in processing state
   useEffect(() => {
@@ -445,7 +562,8 @@ function App() {
 
   // --- Track Gallery handlers ---
   const toggleExcludePid = async (pid: number) => {
-    if (!analysisResult) return;
+    const currentData = getCurrentAnalysisData();
+    if (!currentData) return;
     const next = excludedIds.includes(pid)
       ? excludedIds.filter((x) => x !== pid)
       : [...excludedIds, pid];
@@ -453,10 +571,13 @@ function App() {
     
     // Call backend to recompute
     try {
+      const currentData = getCurrentAnalysisData();
+      if (!currentData) return;
+      
       const payload = {
-        analysis_id: analysisResult.metadata?.analysis_id,
+        analysis_id: currentData.metadata?.analysis_id,
         excluded_track_ids: next.map(id => String(id)), // Ensure IDs are strings
-        processing: analysisResult.processing,
+        processing: currentData.processing,
       };
       
       const resp = await axios.post(`${FASTAPI_URL}/apply-filters`, payload, {
@@ -505,7 +626,7 @@ function App() {
       <style>{`
 @keyframes spin{to{transform:rotate(1turn)}}
 /* Navbar spans full width with fluid padding scaling by viewport width */
-.nav-inner{width:100%;padding:clamp(12px,1.2vw,28px) clamp(24px,5vw,128px);margin:0 auto}
+      .nav-inner{width:100%;padding:clamp(8px,0.8vw,16px) clamp(24px,5vw,128px);margin:0 auto}
 /* Hero/content kept centered with larger side paddings to avoid hugging left */
 .hero-inner{max-width:1140px;padding-left:24px;padding-right:24px;margin:0 auto}
 @media (min-width:1280px){.hero-inner{max-width:1240px;padding-left:36px;padding-right:36px}}
@@ -535,22 +656,8 @@ function App() {
             gap: 15,
           }}
         >
-          <a href="/" onClick={handleHomeClick} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                display: "grid",
-                placeItems: "center",
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                background: "linear-gradient(135deg,#1f49a6,#0a193a)",
-                color: "#fff",
-                boxShadow: "0 10px 22px rgba(31,73,166,.20)",
-              }}
-            >
-              🟦
-            </div>
-            <b>Tracko</b>
+          <a href="/" onClick={handleHomeClick} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
+            <img src="/logo3.svg" alt="Tracko Logo" style={{ height: 43, width: 'auto', objectFit: 'contain' }} />
           </a>
           <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
             <a
@@ -825,8 +932,9 @@ function App() {
                     </button>
                     <div className="grid gap-5">
                       <FileUpload
-                        onFileUpload={setUploadedFile}
-                        uploadedFile={uploadedFile}
+                        onFileUpload={handleFileUpload}
+                        uploadedFiles={uploadedFiles}
+                        multiple={true}
                         compact
                       />
                       {/* Mode Cepat radios, bound to frameSkip */}
@@ -876,12 +984,12 @@ function App() {
                 <div className="text-center mt-6">
                   <button
                     onClick={handleAnalyze}
-                    disabled={!uploadedFile || isAnalyzing}
+                    disabled={uploadedFiles.length === 0 || isAnalyzing}
                     className={`inline-flex items-center px-10 py-3 rounded-2xl font-semibold text-base transition-all duration-300 ${
-                      !uploadedFile || isAnalyzing
+                      uploadedFiles.length === 0 || isAnalyzing
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                         : "bg-gradient-to-r from-blue-800 to-blue-950 text-white"
-                    } ${!uploadedFile || isAnalyzing ? "" : "hover:scale-105"}`}
+                    } ${uploadedFiles.length === 0 || isAnalyzing ? "" : "hover:scale-105"}`}
                   >
                     {isAnalyzing ? (
                       <>
@@ -944,7 +1052,7 @@ function App() {
                           width: 8,
                           height: 8,
                           borderRadius: 999,
-                          background: uploadedFile ? "#16a34a" : "#cbd5e1",
+                          background: uploadedFiles.length > 0 ? "#16a34a" : "#cbd5e1",
                           display: "inline-block",
                         }}
                       />{" "}
@@ -964,7 +1072,7 @@ function App() {
                       <div
                         style={{
                           height: "100%",
-                          width: uploadedFile ? "100%" : "5%",
+                          width: uploadedFiles.length > 0 ? "100%" : "5%",
                           background: "linear-gradient(90deg,#1f49a6,#0a193a)",
                         }}
                       />
@@ -1037,11 +1145,16 @@ function App() {
                     namun memerlukan waktu proses yang lebih lama.
                   </p>
                   {/* --- Analysis Details --- */}
-                  {uploadedFile && (
+                  {uploadedFiles.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-700">
                       <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        <dt className="font-medium text-gray-500">Nama file</dt>
-                        <dd className="truncate text-right">{uploadedFile.name}</dd>
+                        <dt className="font-medium text-gray-500">Files</dt>
+                        <dd className="truncate text-right">
+                          {uploadedFiles.length === 1 
+                            ? uploadedFiles[0].name 
+                            : `${uploadedFiles.length} files selected`
+                          }
+                        </dd>
 
                         <dt className="font-medium text-gray-500">Durasi video</dt>
                         <dd className="text-right">
@@ -1054,7 +1167,10 @@ function App() {
 
                         <dt className="font-medium text-gray-500">Ukuran file</dt>
                         <dd className="text-right">
-                          {(uploadedFile.size / 1024 / 1024).toFixed(1)} MB
+                          {uploadedFiles.length === 1 
+                            ? `${(uploadedFiles[0].size / 1024 / 1024).toFixed(1)} MB`
+                            : `${(uploadedFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(1)} MB total`
+                          }
                         </dd>
 
                         <dt className="font-medium text-gray-500">Mode Cepat</dt>
@@ -1078,14 +1194,266 @@ function App() {
 
         {/* Removed separate Processing Section; progress updates in the status card */}
 
-        {/* Results Section */}
-        {currentStep === AnalysisStep.COMPLETED && analysisResult && (
-          <div className="space-y-8">
+        {/* File Selector for Batch Analysis */}
+          {currentStep === AnalysisStep.COMPLETED && batchResult && (
+            <div className="hero-inner space-y-8 pb-7">
+              <div className="bg-white rounded-3xl shadow-sm p-8" style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.88)' }}>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Batch Analysis Results</h2>
+                  
+                  {/* View Mode Toggle */}
+                  <div className="flex gap-4 mb-6">
+                    <button
+                      onClick={() => setViewMode('individual')}
+                      className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                        viewMode === 'individual'
+                          ? 'text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      style={viewMode === 'individual' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
+                    >
+                      Individual Files
+                    </button>
+                    <button
+                      onClick={() => setViewMode('comparison')}
+                      className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                        viewMode === 'comparison'
+                          ? 'text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      style={viewMode === 'comparison' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
+                    >
+                      Comparison
+                    </button>
+                    <button
+                      onClick={() => setViewMode('summary')}
+                      className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                        viewMode === 'summary'
+                          ? 'text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      style={viewMode === 'summary' ? { background: 'linear-gradient(135deg,#1f49a6,#0a193a)' } : {}}
+                    >
+                      Summary
+                    </button>
+                  </div>
+
+                  {/* File Selector for Individual View */}
+                  {viewMode === 'individual' && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-3">Select File to Analyze:</h3>
+                      <div className="grid gap-3">
+                        {batchResult.individual_results.map((result, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedFileIndex(idx)}
+                            className={`p-4 rounded-xl text-left transition-all ${
+                              selectedFileIndex === idx
+                                ? 'bg-blue-50 border-2 border-blue-200'
+                                : 'bg-white border border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
+                                  <span className="text-white font-bold">{idx + 1}</span>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-900">
+                                    {result.metadata?.original_filename || 
+                                     (uploadedFiles[idx] ? uploadedFiles[idx].name : `File ${idx + 1}`)}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {result.unique_persons} persons • {Object.keys(result.shelf_interactions).length} shelves
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-gray-700">
+                                  {result.dwell_time_analysis.average_dwell_time.toFixed(1)}s avg dwell
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {result.metadata?.file_size ? 
+                                    `${(result.metadata.file_size / 1024 / 1024).toFixed(1)} MB` :
+                                    (uploadedFiles[idx] ? `${(uploadedFiles[idx].size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size')
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comparison View */}
+                  {viewMode === 'comparison' && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-4">Side-by-Side Comparison</h3>
+                      <div className="flex flex-wrap justify-center gap-4">
+                        {batchResult.individual_results.map((result, idx) => (
+                          <div key={idx} className="bg-white p-4 rounded-xl border border-gray-200 w-full sm:w-80 max-w-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
+                                <span className="text-white font-bold text-sm">{idx + 1}</span>
+                              </div>
+                              <h4 className="font-semibold text-gray-900 text-sm truncate">
+                                {result.metadata?.original_filename || 
+                                 (uploadedFiles[idx] ? uploadedFiles[idx].name : `File ${idx + 1}`)}
+                              </h4>
+                            </div>
+                            
+                            {/* Mini Heatmap */}
+                            <div className="mb-3">
+                              <div className="aspect-square bg-gray-100 rounded-lg p-2">
+                                {result.download_links?.heatmap_image ? (
+                                  <img 
+                                    src={result.download_links.heatmap_image} 
+                                    alt="Traffic Heatmap"
+                                    className="w-full h-full object-cover rounded"
+                                    onError={(e) => {
+                                       e.currentTarget.style.display = 'none';
+                                       const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                                       if (nextElement) {
+                                         nextElement.style.display = 'flex';
+                                       }
+                                     }}
+                                  />
+                                ) : null}
+                                <div 
+                                  className="w-full h-full flex items-center justify-center text-gray-400 text-xs"
+                                  style={{ display: result.download_links?.heatmap_image ? 'none' : 'flex' }}
+                                >
+                                  No heatmap image
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1 text-center">Traffic Heatmap</p>
+                            </div>
+                            
+                            {/* Key Metrics */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-600">Persons:</span>
+                                <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>{result.unique_persons}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-600">Interactions:</span>
+                                <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>{result.total_interactions}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-600">Avg Dwell:</span>
+                                <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>
+                                  {result.dwell_time_analysis.average_dwell_time.toFixed(1)}s
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-600">Top Action:</span>
+                                <span className="text-xs font-medium text-gray-800 truncate">
+                                  {result.behavioral_insights.most_common_action}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-600">Shelves:</span>
+                                <span className="text-sm font-semibold" style={{ color: '#1f49a6' }}>
+                                  {Object.keys(result.shelf_interactions).length}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* View Details Button */}
+                            <button
+                              onClick={() => {
+                                setSelectedFileIndex(idx);
+                                setViewMode('individual');
+                              }}
+                              className="w-full mt-3 px-3 py-2 text-white rounded-lg text-xs font-medium transition-colors hover:opacity-90"
+                              style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary View */}
+                  {viewMode === 'summary' && (
+                    <div className="mb-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div className="p-6 rounded-xl" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
+                          <h4 className="font-semibold text-white mb-2">Total Files</h4>
+                          <p className="text-3xl font-bold text-white">{batchResult.total_files}</p>
+                        </div>
+                        <div className="p-6 rounded-xl" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
+                          <h4 className="font-semibold text-white mb-2">Total Persons</h4>
+                          <p className="text-3xl font-bold text-white">{batchResult.aggregate_metrics.total_unique_persons}</p>
+                        </div>
+                        <div className="p-6 rounded-xl" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
+                          <h4 className="font-semibold text-white mb-2">Avg Dwell Time</h4>
+                          <p className="text-3xl font-bold text-white">{batchResult.aggregate_metrics.average_dwell_time_across_videos.toFixed(1)}s</p>
+                        </div>
+                      </div>
+                      
+                      {/* Per-File Summary Table */}
+                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                          <h4 className="font-semibold text-gray-900">Per-File Summary</h4>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Persons</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interactions</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Dwell</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {batchResult.aggregate_metrics.per_file_summary?.map((fileSummary, idx) => (
+                                <tr key={idx} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {fileSummary.filename === 'unknown' && uploadedFiles[idx] ? 
+                                      uploadedFiles[idx].name : 
+                                      fileSummary.filename
+                                    }
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold" style={{ color: '#1f49a6' }}>
+                                    {fileSummary.unique_persons}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold" style={{ color: '#1f49a6' }}>
+                                    {fileSummary.total_interactions}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold" style={{ color: '#1f49a6' }}>
+                                    {fileSummary.avg_dwell_time.toFixed(1)}s
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {fileSummary.most_common_action}
+                                  </td>
+                                </tr>
+                              )) || []}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+            </div>
+          )}
+
+          {/* Results Section */}
+          {currentStep === AnalysisStep.COMPLETED && (analysisResult || (batchResult && viewMode === 'individual')) && (
+          <div className="hero-inner space-y-8">
             {/* Annotated Video + Shelf Map: stacked on mobile, side-by-side on desktop */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {(analysisResult.download_links?.annotated_video_stream ||
-                analysisResult.download_links?.annotated_video_blob_path ||
-                analysisResult.download_links?.annotated_video_download) && (
+              {(() => {
+                const currentData = getCurrentAnalysisData();
+                return currentData && (currentData.download_links?.annotated_video_stream ||
+                  currentData.download_links?.annotated_video_blob_path ||
+                  currentData.download_links?.annotated_video_download);
+              })() && (
                 <div
                   className="bg-white rounded-3xl shadow-sm p-8"
                   style={{
@@ -1129,7 +1497,9 @@ function App() {
                     </span>
                   </div>
                   {(() => {
-                    const links = analysisResult.download_links || {};
+                    const currentData = getCurrentAnalysisData();
+                    if (!currentData) return null;
+                    const links = currentData.download_links || {};
                     const url = links.annotated_video_stream
                       ? `${FASTAPI_URL}${links.annotated_video_stream}`
                       : links.annotated_video_blob_path
@@ -1141,16 +1511,19 @@ function App() {
                       <AnnotatedVideo
                         videoUrl={url}
                         downloadUrl={links.annotated_video_download}
-                        analysisId={analysisResult.metadata?.analysis_id}
-                        originalUrl={originalVideoUrl || undefined}
+                        analysisId={currentData.metadata?.analysis_id}
+                        originalUrl={originalVideoUrls[selectedFileIndex] || originalVideoUrls[0] || undefined}
                       />
                     );
                   })()}
                 </div>
               )}
 
-              {(analysisResult.download_links?.shelf_map_images ||
-                analysisResult.download_links?.shelf_map_image) && (
+              {(() => {
+                const currentData = getCurrentAnalysisData();
+                return currentData && (currentData.download_links?.shelf_map_images ||
+                  currentData.download_links?.shelf_map_image);
+              })() && (
                 <div
                   className="bg-white rounded-3xl shadow-sm p-8"
                   style={{
@@ -1192,11 +1565,9 @@ function App() {
                     </span>
                   </div>
                   {(() => {
-                    const imgs =
-                      analysisResult.download_links?.shelf_map_images ||
-                      [analysisResult.download_links?.shelf_map_image].filter(
-                        Boolean
-                      );
+                      const currentData = getCurrentAnalysisData();
+                      const imgs = currentData?.download_links?.shelf_map_images ||
+                        [currentData?.download_links?.shelf_map_image].filter(Boolean) || [];
                     const safeImgs = imgs.filter(Boolean) as string[];
                     return (
                       <div>
@@ -1262,10 +1633,13 @@ function App() {
             </div>
 
             {/* Full-width Track Gallery */}
-            {(analysisResult.track_gallery || []).length > 0 && (
+            {(() => {
+              const currentData = getCurrentAnalysisData();
+              return currentData?.track_gallery && currentData.track_gallery.length > 0;
+            })() && (
               <div className="bg-white rounded-3xl shadow-sm p-8" style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.88)' }}>
                 <TrackGallery
-                  items={analysisResult.track_gallery || []}
+                  items={getCurrentAnalysisData()?.track_gallery || []}
                   excludedIds={excludedIds}
                   onToggleExclude={toggleExcludePid}
                 />
@@ -1287,7 +1661,7 @@ function App() {
                 )}
                 <h4 className="text-lg font-semibold mb-2">Unique Persons</h4>
                 <p className="text-3xl font-bold">
-                  {analysisResult.unique_persons}
+                  {getCurrentAnalysisData()?.unique_persons || 0}
                 </p>
                 <p className="text-blue-200 text-sm">Detected in video</p>
               </div>
@@ -1304,7 +1678,7 @@ function App() {
                 )}
                 <h4 className="text-lg font-semibold mb-2">Detected Actions</h4>
                 <p className="text-3xl font-bold">
-                  {analysisResult.total_interactions}
+                  {getCurrentAnalysisData()?.total_interactions || 0}
                 </p>
                 <p className="text-blue-200 text-sm">Customer actions</p>
               </div>
@@ -1321,7 +1695,7 @@ function App() {
                 )}
                 <h4 className="text-lg font-semibold mb-2">Avg Dwell Time</h4>
                 <p className="text-3xl font-bold">
-                  {analysisResult.dwell_time_analysis?.average_dwell_time?.toFixed(
+                  {getCurrentAnalysisData()?.dwell_time_analysis?.average_dwell_time?.toFixed(
                     1
                   ) || 0}
                   s
@@ -1331,7 +1705,9 @@ function App() {
             </div>
 
             {/* Top Actions (before Journey) */}
-            <TopActions analysisData={analysisResult} />
+            {getCurrentAnalysisData() && (
+                  <TopActions analysisData={getCurrentAnalysisData()!} />
+                )}
 
             {/* Visualizations Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1377,9 +1753,9 @@ function App() {
                   </span>
                 </div>
                 <Heatmap
-                  data={analysisResult.heatmap_data}
-                  heatmapImageUrl={analysisResult.download_links?.heatmap_image}
-                  shelfMapImageUrl={analysisResult.download_links?.shelf_map_image}
+                  data={getCurrentAnalysisData()?.heatmap_data}
+                  heatmapImageUrl={getCurrentAnalysisData()?.download_links?.heatmap_image}
+                  shelfMapImageUrl={getCurrentAnalysisData()?.download_links?.shelf_map_image}
                   isFiltered={excludedIds.length > 0}
                 />
               </div>
@@ -1425,17 +1801,23 @@ function App() {
                     Dwell Time
                   </span>
                 </div>
-                <DwellTimeChart
-                  data={generateDwellTimeData(analysisResult)}
-                  altData={(() => {
-                    const load =
-                      (analysisResult as any).shelf_dwell_load_seconds || {};
-                    const asArr = Object.entries(load).map(
-                      ([shelf, seconds]) => ({ shelf, time: seconds as number })
-                    );
-                    return asArr.sort((a, b) => b.time - a.time);
-                  })()}
-                />
+                {(() => {
+                  const currentData = getCurrentAnalysisData();
+                  if (!currentData) return null;
+                  return (
+                    <DwellTimeChart
+                      data={generateDwellTimeData(currentData)}
+                      altData={(() => {
+                        const load =
+                          (currentData as any).shelf_dwell_load_seconds || {};
+                        const asArr = Object.entries(load).map(
+                          ([shelf, seconds]) => ({ shelf, time: seconds as number })
+                        );
+                        return asArr.sort((a, b) => b.time - a.time);
+                      })()}
+                    />
+                  );
+                })()}
               </div>
             </div>
 
@@ -1448,7 +1830,7 @@ function App() {
               }}
             >
               <CustomerJourney
-                journeyData={generateJourneyData(analysisResult)}
+                journeyData={getCurrentAnalysisData() ? generateJourneyData(getCurrentAnalysisData()!) : undefined}
               />
             </div>
 
@@ -1493,7 +1875,9 @@ function App() {
                   Archetypes
                 </span>
               </div>
-              <BehaviorArchetypes analysisData={analysisResult} />
+              {getCurrentAnalysisData() && (
+                  <BehaviorArchetypes analysisData={getCurrentAnalysisData()!} />
+                )}
             </div>
 
             {/* AI Insights */}
@@ -1531,7 +1915,9 @@ function App() {
                   AI Insights
                 </span>
               </div>
-              <InsightRecommendations analysisData={analysisResult} />
+              {getCurrentAnalysisData() && (
+                <InsightRecommendations analysisData={getCurrentAnalysisData()!} />
+              )}
             </div>
           </div>
         )}
@@ -1558,7 +1944,11 @@ function App() {
               <div className="grid gap-6">
                 <div>
                   <div className="text-sm text-gray-700 mb-2 font-medium">Max Duration</div>
-                  <DurationSlider value={maxDuration} onChange={setMaxDuration} fileSize={uploadedFile?.size} />
+                  <DurationSlider 
+                  value={maxDuration} 
+                  onChange={setMaxDuration} 
+                  fileSize={uploadedFiles.length > 0 ? uploadedFiles[0].size : undefined} 
+                />
                 </div>
                 <div>
                   <div className="text-sm text-gray-700 mb-2 font-medium">Processing Speed</div>
