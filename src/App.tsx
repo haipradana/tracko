@@ -880,7 +880,7 @@ function App() {
         {/* Upload + Status Section (shown during upload and processing) */}
         {(currentStep === AnalysisStep.UPLOAD ||
           currentStep === AnalysisStep.PROCESSING) && (
-          <div ref={uploadSectionRef} className="space-y-8">
+          <div ref={uploadSectionRef} className="hero-inner space-y-8">
             {/* Desktop Layout: Upload & Duration on left, Processing on right */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Upload + Max Duration (mengikuti referensi) */}
