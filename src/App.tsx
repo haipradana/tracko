@@ -1521,6 +1521,7 @@ function App() {
                       : undefined;
                     return (
                       <AnnotatedVideo
+                        key={`annotated-video-${selectedFileIndex}-${currentData.metadata?.analysis_id}`}
                         videoUrl={url}
                         downloadUrl={links.annotated_video_download}
                         analysisId={currentData.metadata?.analysis_id}
