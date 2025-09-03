@@ -227,15 +227,15 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
   const getInsightStyle = (type: string) => {
     switch (type) {
       case 'analysis':
-        return 'bg-blue-900/10 border-blue-300/30 text-blue-100';
+        return 'bg-blue-50 border-blue-200 text-blue-800';
       case 'pattern':
-        return 'bg-purple-900/10 border-purple-300/30 text-purple-100';
+        return 'bg-purple-50 border-purple-200 text-purple-800';
       case 'opportunity':
-        return 'bg-emerald-900/10 border-emerald-300/30 text-emerald-100';
+        return 'bg-emerald-50 border-emerald-200 text-emerald-800';
       case 'warning':
-        return 'bg-orange-900/10 border-orange-300/30 text-orange-100';
+        return 'bg-orange-50 border-orange-200 text-orange-800';
       default:
-        return 'bg-gray-900/10 border-gray-300/30 text-gray-100';
+        return 'bg-gray-50 border-gray-200 text-gray-800';
     }
   };
 
@@ -318,29 +318,29 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
       {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center space-x-3 mb-4">
-          <div className="p-3 bg-yellow-400/20 rounded-2xl">
-            <Sparkles className="h-8 w-8 text-yellow-400" />
+          <div className="p-3 rounded-2xl" style={{ background: 'rgba(31,73,166,0.12)' }}>
+            <Sparkles className="h-8 w-8" style={{ color: '#1f49a6' }} />
           </div>
-          <h3 className="text-2xl font-bold">AI Insights</h3>
+          <h3 className="text-2xl font-bold text-gray-900">AI Insights</h3>
         </div>
-        <p className="text-gray-300 text-lg">Dapatkan rekomendasi AI dari data asli atau buat insight berbasis prompt.</p>
+        <p className="text-gray-700 text-lg">Dapatkan rekomendasi AI dari data asli atau buat insight berbasis prompt.</p>
       </div>
 
       {/* LLM Insights (Frontend) */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <button className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10" onClick={generateLlmInsights} disabled={llmLoading}>
+          <button className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700" onClick={generateLlmInsights} disabled={llmLoading}>
             {llmLoading ? 'Menghasilkan…' : 'Regenerate dengan AI'}
           </button>
-          {llmError && <span className="text-red-400 text-sm">{llmError}</span>}
+          {llmError && <span className="text-red-600 text-sm">{llmError}</span>}
         </div>
         {insights.length === 0 && !llmLoading && (
-          <small className="opacity-70">Belum ada insight. Klik "Regenerate dengan AI" untuk menghasilkan.</small>
+          <small className="text-gray-600">Belum ada insight. Klik "Regenerate dengan AI" untuk menghasilkan.</small>
         )}
         {(Array.isArray(insights) ? insights : []).map((insight, index) => (
           <div key={index} className={`border rounded-2xl p-6 ${getInsightStyle(insight.type)}`}>
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 p-2 bg-white/10 rounded-xl mt-1">
+              <div className="flex-shrink-0 p-2 bg-gray-100 rounded-xl mt-1">
                 {getIcon(insight.type)}
               </div>
               <div className="flex-1">
@@ -351,8 +351,8 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
           </div>
         ))}
         {summaryInsight && (
-          <div className="border rounded-2xl p-6 bg-white/5 border-white/10">
-            <h4 className="font-semibold mb-2">Kesimpulan</h4>
+          <div className="border rounded-2xl p-6 bg-gray-50 border-gray-200">
+            <h4 className="font-semibold mb-2 text-gray-900">Kesimpulan</h4>
             {renderAny(summaryInsight)}
           </div>
         )}
@@ -360,8 +360,8 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
 
       {/* PROMPT (Azure OpenAI only) */}
       <div className="grid grid-cols-1 gap-6">
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-          <h4 className="font-semibold text-xl mb-4 flex items-center gap-2">
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+          <h4 className="font-semibold text-xl mb-4 flex items-center gap-2 text-gray-900">
             <Wand2 className="h-5 w-5"/>
             Tanya AI
           </h4>
@@ -371,26 +371,38 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
                 <button
                   key={i}
                   onClick={() => handleSuggestedQuestionClick(q)}
-                  className="text-sm px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 whitespace-nowrap hover:bg-white/10 transition-colors"
+                  className={`text-sm px-3 py-1.5 rounded-lg border whitespace-nowrap transition-colors ${
+                    prompt === q 
+                      ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
                 >
                   {q}
                 </button>
               ))}
             </div>
-            <textarea className="w-full min-h-[120px] p-3 rounded-lg bg-white/5 border border-white/10" value={prompt} onChange={(e)=>setPrompt(e.target.value)} />
+            <textarea className="w-full min-h-[120px] p-3 rounded-lg bg-white border border-gray-300 text-gray-900" value={prompt} onChange={(e)=>setPrompt(e.target.value)} />
             <div className="flex gap-3 items-center">
-              <button className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10" onClick={() => handlePromptInsights()} disabled={promptLoading}>
+              <button 
+                className="px-3 py-2 rounded-lg text-white font-medium transition-all duration-200 hover:scale-105" 
+                style={{ 
+                  background: 'linear-gradient(135deg, #1f49a6, #0a193a)',
+                  boxShadow: '0 4px 8px rgba(10,25,58,0.3)'
+                }}
+                onClick={() => handlePromptInsights()} 
+                disabled={promptLoading}
+              >
                 {promptLoading ? 'Mohon tunggu…' : 'Tanya!'}
               </button>
-              {promptError && <span className="text-red-400 text-sm">{promptError}</span>}
+              {promptError && <span className="text-red-600 text-sm">{promptError}</span>}
             </div>
       {promptOutput && (
-              <div className="border border-white/10 rounded-xl p-3 bg-white/5 whitespace-pre-wrap text-sm opacity-90">
+              <div className="border border-gray-200 rounded-xl p-3 bg-white whitespace-pre-wrap text-sm text-gray-700">
                 {promptOutput}
               </div>
             )}
             {promptAnswer && (
-              <div className="border border-white/10 rounded-xl p-4 bg-white/5 text-sm opacity-90 prose prose-invert max-w-none
+              <div className="border border-gray-200 rounded-xl p-4 bg-white text-sm text-gray-700 prose max-w-none
                               prose-ul:pl-6 prose-ol:pl-6 prose-li:my-0.5 prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}

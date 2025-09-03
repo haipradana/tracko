@@ -2049,25 +2049,25 @@ function App() {
             </div>
 
             {/* AI Insights */}
-            <div id="insights" className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-8 text-white">
+            <div id="insights" className="bg-white rounded-3xl shadow-sm p-8" style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.88)' }}>
               <div
                 className="flex items-center justify-between"
                 style={{
                   marginTop: -12,
                   paddingBottom: 10,
-                  borderBottom: "1px solid rgba(255,255,255,0.18)",
+                  borderBottom: "1px solid #e6dfd2",
                   marginBottom: 12,
                 }}
               >
-                <h3 className="text-lg font-semibold">
+                <h3 className="text-lg font-semibold text-gray-900">
                   AI Insights & Rekomendasi
                 </h3>
                 <span
                   className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
                   style={{
-                    background: "rgba(255,255,255,0.12)",
-                    border: "1px solid rgba(255,255,255,0.20)",
-                    color: "#fff",
+                    background: "#f6f2eb",
+                    border: "1px solid #e6dfd2",
+                    color: "#2a3556",
                     marginLeft: "auto",
                   }}
                 >
@@ -2076,7 +2076,7 @@ function App() {
                       width: 8,
                       height: 8,
                       borderRadius: 999,
-                      background: "#facc15",
+                      background: "#1f49a6",
                       display: "inline-block",
                     }}
                   />
