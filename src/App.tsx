@@ -1009,7 +1009,7 @@ function App() {
                     marginBottom: 12,
                   }}
                 >
-                  <h3 className="font-semibold text-gray-900">Upload Video</h3>
+                  <h3 className="font-semibold text-gray-900">Upload CCTV Tokomu</h3>
                   <span
                     className="inline-flex items-center gap-2 px-3 py-1 rounded-xl"
                     style={{
@@ -1051,7 +1051,7 @@ function App() {
                     >
                       <Settings className="w-5 h-5" />
                     </button>
-                    <div className="grid gap-5">
+                    <div className="grid gap-3">
                       <FileUpload
                         onFileUpload={handleFileUpload}
                         uploadedFiles={uploadedFiles}

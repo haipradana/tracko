@@ -102,17 +102,26 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, uploadedFiles, co
     return (
       <div onDrop={handleDrop} onDragOver={(e)=>e.preventDefault()} className="cursor-pointer">
         <input type="file" accept="video/*,image/*" onChange={handleFileSelect} className="hidden" id="file-upload" multiple={multiple} />
-        <label htmlFor="file-upload" className="inline-flex items-center px-4 py-2 rounded-xl text-white" style={{ background:'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
-          {multiple ? 'Upload CCTV Tokomu' : 'Upload CCTV Tokomu'}
-        </label>
-        {uploadedFiles.length > 0 && (
-          <span className="ml-3 text-gray-700">
-            {uploadedFiles.length === 1 
-              ? `${uploadedFiles[0].name} · ${formatFileSize(uploadedFiles[0].size)}`
-              : `${uploadedFiles.length} video dipilih`
-            }
-          </span>
-        )}
+        <div className="flex flex-col">
+          <div className="flex items-center">
+            <label htmlFor="file-upload" className="inline-flex items-center px-4 py-2 rounded-xl text-white" style={{ background:'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
+              {multiple ? 'Unggah Video' : 'Unggah Video'}
+            </label>
+            {uploadedFiles.length > 0 && (
+              <span className="ml-3 text-gray-700">
+                {uploadedFiles.length === 1 
+                  ? `${uploadedFiles[0].name} · ${formatFileSize(uploadedFiles[0].size)}`
+                  : `${uploadedFiles.length} video dipilih`
+                }
+              </span>
+            )}
+          </div>
+          {multiple && (
+            <p className="text-gray-500 text-s mt-3">
+              Jika CCTV berbasis multicam, upload bersamaan files video dari masing-masing kamera.
+            </p>
+          )}
+        </div>
       </div>
     );
   }
