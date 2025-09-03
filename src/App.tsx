@@ -1319,7 +1319,7 @@ function App() {
           {currentStep === AnalysisStep.COMPLETED && batchResult && (
             <div className="hero-inner space-y-8 pb-7">
               <div className="bg-white rounded-3xl shadow-sm p-8" style={{ border: '1px solid #e6dfd2', background: 'rgba(255,255,255,0.88)' }}>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Hasil Analisis Multi File</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Hasil Analisis Multi Video</h2>
                   
                   {/* View Mode Toggle */}
                   <div className="flex gap-4 mb-6">
@@ -1412,7 +1412,11 @@ function App() {
                       <h3 className="text-lg font-semibold mb-4">Perbandingan Langsung</h3>
                       <div className="flex flex-wrap justify-center gap-4">
                         {batchResult.individual_results.map((result, idx) => (
-                          <div key={idx} className="bg-white p-4 rounded-xl border border-gray-200 w-full sm:w-80 max-w-sm">
+                          <div
+                            key={idx}
+                            className="bg-white p-4 rounded-xl border border-gray-200 shadow-xl w-full sm:w-80 max-w-sm"
+                            style={{ boxShadow: '0 6px 14px rgba(0,0,0,0.06)' }}
+                          >
                             <div className="flex items-center gap-2 mb-3">
                               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#1f49a6,#0a193a)' }}>
                                 <span className="text-white font-bold text-sm">{idx + 1}</span>
@@ -1479,27 +1483,27 @@ function App() {
                         <div
                           className="rounded-3xl shadow-sm p-8"
                           style={{
-                            background: 'linear-gradient(135deg,#1f49a6,#0a193a)',
-                            border: '1px solid rgba(255,255,255,0.1)'
+                            background: 'rgba(255,255,255,0.88)',
+                            border: '1px solid #e6dfd2'
                           }}
                         >
                           <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                               <div
                                 className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                style={{ background: 'rgba(255,255,255,0.15)' }}
+                                style={{ background: 'rgba(31,73,166,0.12)' }}
                               >
-                                <Sparkles className="h-5 w-5 text-yellow-300" />
+                                <Sparkles className="h-5 w-5" style={{ color: '#1f49a6' }} />
                               </div>
-                              <h3 className="text-xl font-bold text-white">AI Insights & Rekomendasi</h3>
+                              <h3 className="text-xl font-bold" style={{ color: '#0a193a' }}>AI Insights & Rekomendasi</h3>
                             </div>
                             <button
                               onClick={fetchComparisonInsights}
                               disabled={loadingInsight}
                               className="px-4 py-2 rounded-xl text-white font-medium transition-all"
                               style={{
-                                background: loadingInsight ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)',
-                                border: '1px solid rgba(255,255,255,0.3)'
+                                background: loadingInsight ? 'rgba(31,73,166,0.35)' : 'linear-gradient(135deg,#1f49a6,#0a193a)',
+                                border: '1px solid rgba(10,25,58,0.20)'
                               }}
                             >
                               {loadingInsight ? 'Menganalisis...' : 'Generate Insights'}
@@ -1508,10 +1512,10 @@ function App() {
 
                           {comparisonInsight ? (
                             <div
-                              className="rounded-xl p-6 text-white"
-                              style={{ background: 'rgba(255,255,255,0.1)' }}
+                              className="rounded-xl p-6 text-gray-900"
+                              style={{ background: '#f3f4f6' }}
                             >
-                              <div className="prose prose-invert max-w-none prose-ul:pl-6 prose-ol:pl-6 prose-li:my-0.5 prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1">
+                              <div className="prose max-w-none prose-ul:pl-6 prose-ol:pl-6 prose-li:my-0.5 prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1">
                                 <ReactMarkdown
                                   remarkPlugins={[remarkGfm]}
                                   components={{
@@ -1530,10 +1534,10 @@ function App() {
                             </div>
                           ) : (
                             <div className="text-center py-8">
-                              <p className="text-white/70 mb-4">
+                              <p className="text-gray-700 mb-4">
                                 Dapatkan insight AI dari perbandingan multiple files dengan analisis heatmap dan shelf map.
                               </p>
-                              <p className="text-white/50 text-sm">
+                              <p className="text-gray-500 text-sm">
                                 Klik "Generate Insights" untuk mendapatkan rekomendasi berbasis data.
                               </p>
                             </div>

@@ -299,20 +299,21 @@ const InsightRecommendations: React.FC<InsightRecommendationsProps> = ({ analysi
       <style>{`
         .prompt-suggestions-container {
           scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+          scrollbar-color: rgba(0, 0, 0, 0.35) #e5e7eb; /* thumb, track */
         }
         .prompt-suggestions-container::-webkit-scrollbar {
-          height: 4px;
+          height: 6px;
         }
         .prompt-suggestions-container::-webkit-scrollbar-track {
-          background: transparent;
+          background: #e5e7eb; /* gray-200 */
+          border-radius: 999px;
         }
         .prompt-suggestions-container::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.2);
-          border-radius: 20px;
+          background-color: #cbd5e1; /* gray-300 */
+          border-radius: 999px;
         }
          .prompt-suggestions-container::-webkit-scrollbar-thumb:hover {
-          background-color: rgba(255, 255, 255, 0.3);
+          background-color: #94a3b8; /* slate-400 */
         }
       `}</style>
       {/* Header */}
