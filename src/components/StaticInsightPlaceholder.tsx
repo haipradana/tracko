@@ -3,7 +3,11 @@ import { Sparkles } from "lucide-react";
 const StaticInsightPlaceholder = () => {
   return (
     <div
-      className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-8 text-white"
+      className="bg-white rounded-3xl shadow-sm p-8"
+      style={{
+        border: "1px solid #e6dfd2",
+        background: "rgba(255,255,255,0.88)",
+      }}
       id="insights"
     >
       <div
@@ -11,17 +15,19 @@ const StaticInsightPlaceholder = () => {
         style={{
           marginTop: -12,
           paddingBottom: 10,
-          borderBottom: "1px solid rgba(255,255,255,0.18)",
+          borderBottom: "1px solid #e6dfd2",
           marginBottom: 24, // Increased margin
         }}
       >
-        <h3 className="text-lg font-semibold">AI Insights & Rekomendasi</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          AI Insights & Rekomendasi
+        </h3>
         <span
           className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-xl text-sm"
           style={{
-            background: "rgba(255,255,255,0.12)",
-            border: "1px solid rgba(255,255,255,0.20)",
-            color: "#fff",
+            background: "#f6f2eb",
+            border: "1px solid #e6dfd2",
+            color: "#2a3556",
             marginLeft: "auto",
           }}
         >
@@ -30,7 +36,7 @@ const StaticInsightPlaceholder = () => {
               width: 8,
               height: 8,
               borderRadius: 999,
-              background: "#facc15",
+              background: "#1f49a6",
               display: "inline-block",
             }}
           />
@@ -41,16 +47,29 @@ const StaticInsightPlaceholder = () => {
       {/* Static Content */}
       <div className="text-center">
         <div className="inline-flex items-center space-x-3 mb-4">
-          <div className="p-3 bg-yellow-400/20 rounded-2xl">
-            <Sparkles className="h-6 w-6 text-yellow-400" />
+          <div
+            className="p-3 rounded-2xl"
+            style={{ background: "rgba(31,73,166,0.12)" }}
+          >
+            <Sparkles className="h-5 w-5" style={{ color: "#1f49a6" }} />
           </div>
-          <h3 className="text-2xl font-bold">AI Insights</h3>
+          <h3
+            className="text-2xl font-bold"
+            style={{
+              background: "linear-gradient(135deg, #1f49a6, #0a193a)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            AI Insights
+          </h3>
         </div>
-        <p className="text-gray-300 text-lg mx-auto whitespace-normal md:whitespace-nowrap">
+        <p className="text-gray-800 text-lg mx-auto whitespace-normal md:whitespace-nowrap">
           Dapatkan rekomendasi AI dari data asli atau buat insight berbasis
           prompt.
         </p>
-        <p className="text-sm text-gray-400 mt-4">
+        <p className="text-sm text-gray-500 mt-4">
           (Upload video untuk memulai analisis)
         </p>
       </div>
