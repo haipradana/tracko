@@ -873,7 +873,7 @@ function App() {
           >
             Tracko
           </span>
-          — Track Your Store
+          — Track Toko Otomatis
         </span>
         <h1
           style={{
