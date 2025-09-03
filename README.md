@@ -1,4 +1,4 @@
-# Retail Behavior Analysis - Frontend
+# TRACKO - Frontend
 
 Frontend for Tracko.tech retail analytics platform, built with Vite, TypeScript, and Tailwind CSS.
 
