@@ -793,7 +793,9 @@ function App() {
               Fitur
             </a>
             <a
-              href="#results"
+              href="https://youtu.be/mxiVfxkWEaA"
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 color: "#2a3345",
                 textDecoration: "none",
@@ -949,15 +951,19 @@ function App() {
               ? "Analisis CCTV Lainnya"
               : "Analisis CCTV Toko Anda"}
           </button>
-          <button
+          <a
+            href="https://youtu.be/mxiVfxkWEaA"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center px-4 py-2 rounded-xl bg-white text-gray-900 font-semibold shadow-md"
             style={{
               border: "1px solid #e6dfd2",
               boxShadow: "0 8px 20px 0 rgba(10,25,58,0.32)",
+              textDecoration: "none",
             }}
           >
             Lihat Demo
-          </button>
+          </a>
         </div>
       </div>
 
