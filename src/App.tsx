@@ -781,7 +781,7 @@ function App() {
             <img src="/logo3.svg" alt="Tracko Logo" style={{ height: 43, width: 'auto', objectFit: 'contain' }} />
           </a>
           <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
-            <a
+            {/* <a
               href="#features"
               style={{
                 color: "#2a3345",
@@ -791,7 +791,7 @@ function App() {
               }}
             >
               Fitur
-            </a>
+            </a> */}
             <a
               href="https://youtu.be/mxiVfxkWEaA"
               target="_blank"
@@ -799,7 +799,7 @@ function App() {
               style={{
                 color: "#2a3345",
                 textDecoration: "none",
-                fontSize: 14,
+                fontSize: 15,
                 opacity: 0.9,
               }}
             >
