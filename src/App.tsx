@@ -749,10 +749,10 @@ function App() {
 /* Navbar spans full width with fluid padding scaling by viewport width */
       .nav-inner{width:100%;padding:clamp(8px,0.8vw,16px) clamp(24px,5vw,128px);margin:0 auto}
 /* Hero/content kept centered with larger side paddings to avoid hugging left */
-.hero-inner{max-width:1140px;padding-left:24px;padding-right:24px;margin:0 auto}
-@media (min-width:1280px){.hero-inner{max-width:1240px;padding-left:36px;padding-right:36px}}
-@media (min-width:1536px){.hero-inner{max-width:1380px;padding-left:48px;padding-right:48px}}
-@media (min-width:1920px){.hero-inner{max-width:1600px;padding-left:64px;padding-right:64px}}
+.hero-inner{max-width:1140px;padding-left:clamp(24px,5vw,48px);padding-right:clamp(24px,5vw,48px);margin:0 auto}
+@media (min-width:1280px){.hero-inner{max-width:1240px;padding-left:clamp(36px,6vw,64px);padding-right:clamp(36px,6vw,64px)}}
+@media (min-width:1536px){.hero-inner{max-width:1380px;padding-left:clamp(48px,7vw,80px);padding-right:clamp(48px,7vw,80px)}}
+@media (min-width:1920px){.hero-inner{max-width:1600px;padding-left:clamp(64px,8vw,96px);padding-right:clamp(64px,8vw,96px)}}
       `}</style>
 
       {/* Glass navbar */}
@@ -836,6 +836,8 @@ function App() {
           margin: "0 auto",
           paddingTop: "50px",
           paddingBottom: "6px",
+          paddingLeft: "clamp(32px, 6vw, 64px)",
+          paddingRight: "clamp(32px, 6vw, 64px)",
         }}
       >
         <span
@@ -935,7 +937,12 @@ function App() {
       {/* CTA under hero */}
       <div
         className="hero-inner"
-        style={{ textAlign: "left", marginBottom: 4 }}
+        style={{ 
+          textAlign: "left", 
+          marginBottom: 0,
+          paddingLeft: "clamp(32px, 6vw, 64px)",
+          paddingRight: "clamp(32px, 6vw, 64px)",
+        }}
       >
         <div className="flex gap-3">
           <button
