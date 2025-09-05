@@ -873,7 +873,7 @@ function App() {
               // fontFamily stays default (do not override)
             }}
           >
-            Tracko
+            TracKO
           </span>
           — Track Toko Otomatis
         </span>
