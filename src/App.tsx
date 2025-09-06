@@ -799,8 +799,9 @@ function App() {
               style={{
                 color: "#2a3345",
                 textDecoration: "none",
-                fontSize: 15,
+                fontSize: 14,
                 opacity: 0.9,
+                fontWeight: 500
               }}
             >
               Demo
